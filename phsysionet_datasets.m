@@ -16,21 +16,12 @@ clear all; close all; clc;
 [t109, signal109, Fs109]=rdsamp('mitdb/109',[],21601);
 
 %Salvando os dados em uma unica matrix 'signal'
-signal=[signal100(:,1), zeros(21601,1)+100;
-        signal101(:,1), zeros(21601,1)+101;
-        signal102(:,1), zeros(21601,1)+102;
-        signal103(:,1), zeros(21601,1)+103;
-        signal104(:,1), zeros(21601,1)+104;
-        signal105(:,1), zeros(21601,1)+105;
-        signal106(:,1), zeros(21601,1)+106;
-        signal107(:,1), zeros(21601,1)+107;
-        signal108(:,1), zeros(21601,1)+108;
-        signal109(:,1), zeros(21601,1)+109];
+signal=[signal100(:,1), signal101(:,1), signal102(:,1), signal103(:,1), signal104(:,1), signal105(:,1), signal106(:,1), signal107(:,1), signal108(:,1), signal109(:,1)];
     
 %Salvando a matrix 'signal' em arquivo .csv
 fid = fopen('C:\Users\JoséRoberto\Documents\Documentos\MatLab\mitdb_ecgSignals.csv','w');
-fprintf(fid,'%s,%s\n','signal_mag','signal_case');
-fprintf(fid,'%f,%f\n',signal.');
+fprintf(fid,'%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n','signal_mag100','signal_mag101','signal_mag102','signal_mag103','signal_mag104','signal_mag105','signal_mag106','signal_mag107','signal_mag108','signal_mag109');
+fprintf(fid,'%f,%f,%f,%f,%f,%f,%f,%f,%f,%f\n',signal.');
 fclose(fid)
 
 %Salvando a frequencia de amostragem dos sinais
