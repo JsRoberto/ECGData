@@ -97,6 +97,10 @@ mwi.signals <- dataECG.split
 #-----------------------------------------------------------------------------------------
 #Estágio de decisão
 peak.detection <- function(dataECG.split, samples, Fs = fs) {
+      #Solução achada (mas é ruim!): retirar a ultima amostra do sinal
+      dataECG.split <- lapply(dataECG.split, function(x) x[-length(x)])
+      dataECG.split <- lapply(dataECG.split, split, 
+                              f = gl(length(dataECG.split$`100`)/samples, samples))
       
 }
 
