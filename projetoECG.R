@@ -40,9 +40,13 @@ dataECG.filtered <- function(dataECG.split, num.tf, den.tf, Fs = fs) {
       dataECG.split <<- lapply(filtered.signals, ts, start = 0, end = 60, frequency = Fs)  
 }
 
+dataECG.filtered(dataECG.split, b.lp, a.lp)
+
+dataECG.plot(dataECG.split, 12:18)
+
 #Filtro passa-alta
-b.hp <- c(1,rep(0,31),-1)
-a.hp <- c(1,-1)
+b.hp <- c(-1,rep(0,15),32,rep(0,15),1)
+a.hp <- 32*c(1,-1)
 
 H.hp <- freqz(b.hp, a.hp, Fs = fs)
 
@@ -59,6 +63,10 @@ H.plot <- function(H) {
 par(mfrow=c(1,2))
 plotList <- list(H.lp,H.hp)
 lapply(plotList,H.plot)
+
+dataECG.filtered(dataECG.split, b.hp, a.hp)
+
+dataECG.plot(dataECG.split)
 
 #Operador derivativo
 b.do <- c(2,1,0,-1,-2)
