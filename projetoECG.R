@@ -13,21 +13,17 @@ download <- function(urlFile, localFile) {
 
 mapply(download, urlFile, localFile)
 
+#Obs: mudar o arquivo depois
 dataECG <- read.csv(localFile[1], header = TRUE)
-dataECG.split <- split(dataECG, dataECG$signal_case)
+dataECG.split <- split(dataECG$signal_mag, dataECG$signal_case)
 fs <- read.csv(localFile[2], header = TRUE)
 fs <- as.numeric(fs)
 
 dataECG.plot <- function(dataECG.split, interval.seg = 0:60, Fs = fs) {
       interval.samples <- (min(interval.seg)*Fs):(max(interval.seg)*Fs) + 1
-      #dataECG.splitTEST <- mapply(function(x) x$signal_mag[interval.samples],
-      #                            dataECG.split)
-      dataECG.split <- dataECG.split[[1]][interval.samples,]
-      
-      ggplot(dataECG.split, aes(x = t, y = signal_mag, group = signal_case)) +
-            geom_line() +
-            facet_wrap( ~ signal_case)
-      
+      test <- ts(dataECG.splitTEST$`100`[interval.samples], start = min(interval.seg), end = max(interval.seg),
+         frequency = Fs)
+      plot(test)
 }
 
 dataECG.plot(dataECG.split, 12:18)
@@ -60,10 +56,11 @@ plotList <- list(H.lp,H.hp)
 lapply(plotList,H.plot)
 
 dataECG.filtered <- function(dataECG.split, num.tf, den.tf) {
-      a <- lapply(dataECG.split, function(x) x$signal_mag)
-      b <- lapply(a, filter, filt = num.tf, a = den.tf)
-      dataECG.splitTEST <- mapply(function(y,x) y$signal_mag <- x, y = dataECG.split, x = b)  
+      b <- lapply(dataECG.split, filter, filt = num.tf, a = den.tf)
+      dataECG.splitTEST <- lapply(b, ts, start = 0, end = 60, frequency = 360)  
 }
+
+plot(dataECG.splitTEST$`100`)
 
 #Operador derivativo
 b.do <- c(2,1,0,-1,-2)/8
