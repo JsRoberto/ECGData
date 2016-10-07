@@ -21,7 +21,7 @@ fs <- as.numeric(fs)
 
 dataECG.plot <- function(dataECG.split, interval.seg = 0:60, Fs = fs) {
       interval.samples <- (min(interval.seg)*Fs):(max(interval.seg)*Fs) + 1
-      test <- ts(dataECG.splitTEST$`100`[interval.samples], start = min(interval.seg), end = max(interval.seg),
+      test <- ts(dataECG.split$`100`[interval.samples], start = min(interval.seg), end = max(interval.seg),
          frequency = Fs)
       plot(test)
 }
@@ -34,6 +34,11 @@ b.lp <- c(1,rep(0,5),-2,rep(0,5),1)
 a.lp <- 32*c(1,-2,1)
 
 H.lp <- freqz(b.lp, a.lp, Fs = fs)
+
+dataECG.filtered <- function(dataECG.split, num.tf, den.tf, Fs = fs) {
+      filtered.signals <- lapply(dataECG.split, filter, filt = num.tf, a = den.tf)
+      dataECG.split <<- lapply(filtered.signals, ts, start = 0, end = 60, frequency = Fs)  
+}
 
 #Filtro passa-alta
 b.hp <- c(1,rep(0,31),-1)
@@ -55,16 +60,10 @@ par(mfrow=c(1,2))
 plotList <- list(H.lp,H.hp)
 lapply(plotList,H.plot)
 
-dataECG.filtered <- function(dataECG.split, num.tf, den.tf) {
-      b <- lapply(dataECG.split, filter, filt = num.tf, a = den.tf)
-      dataECG.splitTEST <- lapply(b, ts, start = 0, end = 60, frequency = 360)  
-}
-
-plot(dataECG.splitTEST$`100`)
-
 #Operador derivativo
-b.do <- c(2,1,0,-1,-2)/8
+b.do <- c(2,1,0,-1,-2)
+a.do <- 8
 
-H.do <- freqz(b.do, Fs = fs)
+H.do <- freqz(b.do, a.do, Fs = fs)
 
 #Squaring
