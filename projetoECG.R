@@ -59,8 +59,10 @@ par(mfrow=c(1,2))
 plotList <- list(H.lp,H.hp)
 lapply(plotList,H.plot)
 
-dataECG.filtered <- function() {
-      
+dataECG.filtered <- function(dataECG.split, num.tf, den.tf) {
+      a <- lapply(dataECG.split, function(x) x$signal_mag)
+      b <- lapply(a, filter, filt = num.tf, a = den.tf)
+      dataECG.splitTEST <- mapply(function(y,x) y$signal_mag <- x, y = dataECG.split, x = b)  
 }
 
 #Operador derivativo
