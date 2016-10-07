@@ -1,5 +1,4 @@
 library(signal)
-library(ggplot2)
 
 urlFile <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv",
              "https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
@@ -97,13 +96,45 @@ mwi.signals <- dataECG.split
 #-----------------------------------------------------------------------------------------
 #Estágio de decisão
 peak.detection <- function(dataECG.split, samples, Fs = fs) {
+      peak.valuesAUX <- list()
       #Solução achada (mas é ruim!): retirar a ultima amostra do sinal
       dataECG.split <- lapply(dataECG.split, function(x) x[-length(x)])
-      dataECG.split <- lapply(dataECG.split, split, 
+      dataECG.intervals <- lapply(dataECG.split, split, 
                               f = gl(length(dataECG.split$`100`)/samples, samples))
-      
+      for (i in 1:length(dataECG.intervals)) {
+            peak.valuesAUX[[i]] <- sapply(dataECG.intervals[[i]], max)
+      }
+      peak.values <<- peak.valuesAUX
+}
+###OBS.: por enquanto, não estou guardando o vetor de indices dos picos detectados,
+###conforme a necessidade, revejo este tópico
+
+start.THR <- function(peak.values) {
+      initial.thr <- apply(as.data.frame(peak.values), 2, median, na.rm = TRUE)
+      initial.THR <<- 0.35*initial.thr
 }
 
+PKI <- function(peaks.vector) {
+      if (length(peaks.vector) <= 1) {
+            peaki <- peaks.vector
+      } else {
+            peaki <- 0.125*peaks.vector[length(peaks.vector)] + 0.875*PKI(peaks.vector[-length(peaks.vector)])
+      }
+      peaki
+}
 
+THR <- function(noise.peaks, signal.peaks) {
+      NPKI <- PKI(noise.peaks)
+      SPKI <- PKI(signal.peaks)
+      THR1 <<- NPKI + 0.25*(SPKI - NPKI)
+      THR2 <<- THR1/2
+}
 
+###O vetor para inicializar as variáveis auxiliares será feito conforme a necessidade.
+
+peak.classification <- function(dataECG.split, peak.values, initial.THR, Fs = fs) {
+      ##Primeira parte: usar o parâmetro inicial initial.THR para classificar
+      ##---os primeiros picos de peak.values, até o segundo pico R.
+      
+}
 
