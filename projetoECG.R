@@ -72,6 +72,34 @@ dataECG.plot(dataECG.split)
 b.do <- c(2,1,0,-1,-2)
 a.do <- 8
 
-H.do <- freqz(b.do, a.do, Fs = fs)
+dataECG.filtered(dataECG.split, b.do, a.do)
+
+dataECG.plot(dataECG.split)
+
+do.signals <- dataECG.split
 
 #Squaring
+dataECG.split <- lapply(dataECG.split, function(x) x^2)
+#---obs.: verificar se start e end são desconfigurados
+
+dataECG.plot(dataECG.split)
+
+#Janela de integração móvel
+b.mwi <- rep(1,54)
+a.mwi <- 54
+
+dataECG.filtered(dataECG.split, b.mwi, a.mwi)
+
+dataECG.plot(dataECG.split)
+
+mwi.signals <- dataECG.split
+
+#-----------------------------------------------------------------------------------------
+#Estágio de decisão
+peak.detection <- function(dataECG.split, samples, Fs = fs) {
+      
+}
+
+
+
+
