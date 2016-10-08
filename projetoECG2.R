@@ -140,7 +140,8 @@ filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
 
 filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
 
-#A função "update.filtSignal()" 
+#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
+#---lista de valores filtrados e normalizados "x_norm".
 update.filtSignal <- function(Ecg.signalSplit, x_norm) {
       for (i in 1:length(Ecg.signalSplit)) {
             Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
@@ -149,11 +150,11 @@ update.filtSignal <- function(Ecg.signalSplit, x_norm) {
 
 update.filtSignal(Ecg.signals, x_norm)
 
-#---Bloco 2 - Filtro passa-alta
+#Bloco 2 - Filtro passa-alta.
 N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
 D_hp <- 32*c(1,-1)
 
-H_hpz <- freqz(N_hp, D_hp, Fs = Fs)#Fs = 360 Hz admite Fc = 9 Hz
+H_hpz <- freqz(N_hp, D_hp, Fs = fs) #Fs = 360 Hz admite Fc = 9 Hz
 
 fz_plot(H_hpz, "hp")
 
@@ -161,7 +162,7 @@ filter_ecgSignals(x_norm, N_hp, D_hp)
 
 update.filtSignal(Ecg.signals, x_norm)
 
-#Bloco 3 - Operador derivativo
+#Bloco 3 - Operador derivativo.
 N_do <- c(2,1,0,-1,-2)
 D_do <- 8
 
@@ -171,7 +172,7 @@ update.filtSignal(Ecg.signals, x_norm)
 
 dt.signal <- Ecg.signalSplit
 
-#Bloco 4 - Operador quadratico
+#Bloco 4 - Operador que eleva os valores dos sinais ao quadrado.
 x_norm <- sapply(x_norm, function(x) x^2)
 x_norm <- as.data.frame(x_norm)
 
@@ -190,10 +191,18 @@ update.filtSignal(Ecg.signals,x_norm)
 mwi.signal <- Ecg.signalSplit
 
 #-----------------------------------------------------------------------------------------
+#Etapa de decisão: segunda fase do algoritmo de Pan & Tompkins.
 
-peakDetection <- function(updated.dataSplit, samples, Fs) {
-      peak.values <- data.frame()
-      peak.index <- list()
+#A função "peakDetection()" apresenta como argumentos (a) "updated.dataSplit", uma lista
+#---de sinais atualizada pela função "update.filtSignal()", (b) "samples", a quantidade de 
+#---amostras que terá cada segmento de um sinal, (c) "Fs", a frequência de amostragem dos 
+#---sinais.
+#---O objetivo desta função é obter duas listas: 
+#---(1) "peakValues", que armazena os vetores de picos de cada sinal;
+#---(2) "peakIndez", que armazena os vetores de índices de cada pico em "peakValues".
+peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
+      peakValues <- data.frame()
+      peakIndex <- list()
       k <- 0:(Fs*60/samples)*samples
       for (i in 1:(Fs*60/samples)) {
             if (i == Fs*60/samples) {
@@ -232,6 +241,7 @@ peakDetection <- function(updated.dataSplit, samples, Fs) {
       peakIndex <<- peak.index
 }
 
+#
 initializingVariables <- function() {
       #As variáveis abaixo são importantes para a atualização correta dos vetores que
       #indicam os falsos positivos (indices e quantidades; além disso,
