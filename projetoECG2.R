@@ -344,7 +344,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       }
       #O bloco a seguir inicializa os vetores de classificação "noise.peaksAUX" e 
       #---"signal.peaksAUX"; o vetor de índices dos picos R "index.Speaks", referente a 
-      #---"peakValues"; o vetor "RR.originalIntervals", que armazena a distância entre
+      #---"peakValues"; o vetor "RR.originalIntervalsAUX", que armazena a distância entre
       #---amostras de "signal.peaksAUX"; os vetores "index.originalALLpeaks" e 
       #---"index.originalSpeaks", que representam os índices, referentes ao sinal original,
       #---de todos os picos e dos picos de sinal, respectivamente.
@@ -465,7 +465,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       }
       #-----------------------------------------------------------------------------------
       #No último bloco, os vetores gerados pelo processamento são armazenados nas listas 
-      #---"noise.peaks", "signal.peaks", "index.Rpeaks", "num.falsePos" e "index.falsePos".
+      #---"RR.originalIntervals", "noise.peaks", "signal.peaks", "index.Rpeaks",
+      #---"num.falsePos" e "index.falsePos".
       if (!is.null(num.falsePosAUX)) {
             num.falsePos[[index]] <<- num.falsePosAUX
       }
@@ -525,6 +526,8 @@ peakDetection(mwi.signal, 80, fs)
 initializingVariables()
 
 mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR)
+
+dt.signalRRinterval <- RR.originalIntervals
 
 mapply(df.updated, mwi.signal, signal.peaks, index.Rpeak)
 
