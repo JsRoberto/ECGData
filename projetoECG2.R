@@ -33,6 +33,34 @@ fs <- as.numeric(fs)
 Mean1 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
 Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
 
+#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
+#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
+#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
+filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
+      x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
+      x <- as.data.frame(x)
+      x_norm <- sapply(x, function(x) {
+            x <- x/max(abs(x))
+      })
+      x_norm <<- as.data.frame(x_norm)
+}
+
+filter_ecgSignals(Ecg.signalSplit, 1, 1)
+
+#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
+#---lista de valores filtrados e normalizados "x_norm".
+update.filtSignal <- function(Ecg.signalSplit, x_norm) {
+      for (i in 1:length(Ecg.signalSplit)) {
+            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
+      }
+}
+
+update.filtSignal(Ecg.signalsSplit, x_norm)
+
+#São obtidos a média "Mean2" e o desvio padrão "Std2" dos sinais normalizados.
+Mean2 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
+Std2 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
+
 #A função "dataECGplot()" é a principal função de plotagem do código, responsável por 
 #---mostrar a evolução do sinal em cada etapa de processamento.
 #---Seus argumentos são:
@@ -128,29 +156,9 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
 
 fz_plot(H_lpz, "lp")
 
-#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
-#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
-#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
-filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
-      x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
-      x <- as.data.frame(x)
-      x_norm <- sapply(x, function(x) {
-              x <- x/max(abs(x))
-      })
-      x_norm <<- as.data.frame(x_norm)
-}
-
 filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
 
-#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
-#---lista de valores filtrados e normalizados "x_norm".
-update.filtSignal <- function(Ecg.signalSplit, x_norm) {
-      for (i in 1:length(Ecg.signalSplit)) {
-            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
-      }
-}
-
-update.filtSignal(Ecg.signals, x_norm)
+update.filtSignal(Ecg.signalsSplit, x_norm)
 
 dataECGplot(Ecg.signalSplit, 25:35)
 
@@ -164,7 +172,7 @@ fz_plot(H_hpz, "hp")
 
 filter_ecgSignals(x_norm, N_hp, D_hp)
 
-update.filtSignal(Ecg.signals, x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 dataECGplot(Ecg.signalSplit, 25:35)
 
@@ -174,7 +182,7 @@ D_do <- 8
 
 filter_ecgSignals(x_norm, N_do, D_do)
 
-update.filtSignal(Ecg.signals, x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 dt.signal <- Ecg.signalSplit
 
@@ -186,7 +194,7 @@ x_norm <- as.data.frame(x_norm)
 
 filter_ecgSignals(x_norm, 1, 1)
 
-update.filtSignal(Ecg.signals, x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 dataECGplot(Ecg.signalSplit, 25:35)
 
@@ -194,9 +202,9 @@ dataECGplot(Ecg.signalSplit, 25:35)
 N_if <- rep(1,54)
 D_if <- 54
 
-filter_ecgSignals(x_norm,N_if,D_if)
+filter_ecgSignals(x_norm, N_if, D_if)
 
-update.filtSignal(Ecg.signals,x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 mwi.signal <- Ecg.signalSplit
 
