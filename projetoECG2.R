@@ -1,8 +1,10 @@
 #-----------------------------------------------------------------------------------------
-#Projeto ECG - Aplicação do algoritmo de Pan & Tompkins para detecção de complexos QRS
+#Projeto ECG - Algoritmo de Pan & Tompkins para detecção de complexos QRS
 #-----------------------------------------------------------------------------------------
 
-#ETAPA DE ESTABELECIMENTO
+#-----------------------------------------------------------------------------------------
+#Fase de estabelecimento------------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
 #Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
 library(signal)
@@ -94,7 +96,9 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
 dataECGplot(Ecg.signalSplit, 25:35)
 
 #-----------------------------------------------------------------------------------------
-#Etapa de pré-processamento: primeira fase do algoritmo de Pan & Tompkins.
+#Algoritmo de Pan & Tompkins--------------------------------------------------------------
+#-----------------------------------------------------------------------------------------
+#Fase de pré-processamento.
 
 #Bloco 1 - Filtro passa-baixa.
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
@@ -211,7 +215,8 @@ mwi.signal <- Ecg.signalSplit
 dataECGplot(mwi.signal, 25:35)
 
 #-----------------------------------------------------------------------------------------
-#Etapa de decisão [PARTE 1]: segunda fase do algoritmo de Pan & Tompkins.
+#Fase de decisão [PARTE 1].
+
 #No primeiro momento, são definidas as funções importantes para a detecção e classificação
 #---dos picos dos sinais.
 
@@ -495,12 +500,12 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 }
 
 #-----------------------------------------------------------------------------------------
-#Etapa de decisão [PARTE 2]: segunda fase do algoritmo de Pan & Tompkins.
+#Etapa de decisão [PARTE 2].
+
 #No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
 #---listas de sinais atualizados com dados obtidos com a função "classifying.peaks()", (3)
-#---plotados os gráficos resultades da atualização.
-#---Esses procedimentos serão aplicados tanto à lista de sinais "dt.signal" quanto à lista
-#---"mwi.signal".
+#---plotados os gráficos resultades da atualização. Esses procedimentos serão aplicados 
+#---tanto à lista de sinais "dt.signal" quanto à lista "mwi.signal".
 
 #Aplicação sobre a lista "dt.signal".
 #A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros iniciais
@@ -539,7 +544,7 @@ dt.signalUPD <- df.UPDATED
 
 dataECGplot(dt.signalUPD, 25:35)
 
-#Aplicação sobre a lista "mwi.signal"
+#Aplicação sobre a lista "mwi.signal".
 peakDetection(mwi.signal, fs*3, fs)
 initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
 
