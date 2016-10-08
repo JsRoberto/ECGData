@@ -64,6 +64,7 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
 }
 
 dataECGplot(Ecg.signalSplit, 25:35)
+
 #-----------------------------------------------------------------------------------------
 #Etapa de pré-processamento: primeira fase do algoritmo de Pan & Tompkins.
 
@@ -200,6 +201,7 @@ update.filtSignal(Ecg.signals,x_norm)
 mwi.signal <- Ecg.signalSplit
 
 dataECGplot(mwi.signal, 25:35)
+
 #-----------------------------------------------------------------------------------------
 #Etapa de decisão [PARTE 1]: segunda fase do algoritmo de Pan & Tompkins.
 #No primeiro momento, são definidas as funções importantes para a detecção e classificação
@@ -472,6 +474,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       signal.peaks[[index]] <<- signal.peaksAUX
       index <<- index + 1
 }
+
 #-----------------------------------------------------------------------------------------
 #Etapa de decisão [PARTE 2]: segunda fase do algoritmo de Pan & Tompkins.
 #No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
@@ -492,7 +495,7 @@ peakDetection(dt.signal, 80, fs)
 
 initializingVariables()
 
-mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR, Fs = fs)
+mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
 
 #A função "df.updated()" atualiza o sinal "signal.df" com imformações sobre a localização 
 #---("index.Rpeak") e a magnitude ("signal.peaks") dos picos desse sinal.
@@ -504,24 +507,26 @@ df.updated <- function(signal.df, signal.peaks, index.Rpeak) {
       idx <<- idx + 1
 }
 
-mapply(df.updated, dt.signal, signal.peaks, noise.peaks, index.Rpeak)
+mapply(df.updated, dt.signal, signal.peaks, index.Rpeak)
 
 dt.signalUPD <- df.UPDATED
 
 dataECGplot(dt.signalUPD, 25:35)
 
-#Aplicação sobre a lista "mwi.signal
-peakDetection(mwi.signal,Fs*3,Fs)
-initial.THR <- 0.35*apply(peakValues,2,median, na.rm = TRUE)
+#Aplicação sobre a lista "mwi.signal"
+peakDetection(mwi.signal, fs*3, fs)
+initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
 
-peakDetection(mwi.signal,80,Fs)
+peakDetection(mwi.signal, 80, fs)
 
 initializingVariables()
 
-mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR, Fs = fs)
+mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR)
 
 mapply(df.updated, mwi.signal, signal.peaks, index.Rpeak)
 
 mwi.signalUPD <- df.UPDATED
 
 dataECGplot(mwi.signalUPD, 25:35)
+
+#
