@@ -201,7 +201,9 @@ mwi.signal <- Ecg.signalSplit
 
 dataECGplot(mwi.signal, 25:35)
 #-----------------------------------------------------------------------------------------
-#Etapa de decisão: segunda fase do algoritmo de Pan & Tompkins.
+#Etapa de decisão [PARTE 1]: segunda fase do algoritmo de Pan & Tompkins.
+#No primeiro momento, são definidas as funções importantes para a detecção e classificação
+#---dos picos dos sinais.
 
 #A função "peakDetection()" apresenta como argumentos (a) "updated.dataSplit", uma lista
 #---de sinais atualizada pela função "update.filtSignal()", (b) "samples", a quantidade de 
@@ -425,8 +427,9 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     next
                               }
                         }
-                        ###DETECÇÃO DE FALSOS NEGATIVOS --- ESSE ALGORITMO SE APLICA A AMBOS OS CONJUNTOS DE SINAIS
-                        ###ANALISADOS, TANTO O dx/dt quanto o mwi
+                        #As condições abaixo tratam de testar a existência de falsos 
+                        #---negativos, ou seja, se entre o último pico R classificado e o 
+                        #---suposto atual existe outro pico R não detectado anteriormente. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
                         if (lastRR.originalInterval > 1.66*mean(RR.originalIntervals)) {
                               peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
@@ -447,14 +450,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         } else {
                               signal.peaksAUX <- c(signal.peaksAUX, PEAKI)
                               index.Speaks <- c(index.Speaks, index.RpeakAUX)
-                        }###Obs.: não é posivel fazer a atualização correta do valor
-                        ### de NPKI assim como fazemos do SPKI, uma vez que precisamos
-                        ###voltar inumeros passos e reatualizar os valores todos
-                        ###Contudo, o algoritmo usado corrige os valores de NPKI a cada pico R encontrado.
-                        ###Então, por exemplo, se houver algum falso negativo no intervalo RR corrente, todos
-                        ###o valores de NPKI estarão errados a partir dele até o ultimo "noise peak"
-                        ###antes do pico R; mas, a partir daí, detecta-se a presença desse falso negativo,
-                        ###e o valor correto de NPKI, a partir desse ultimo pico R, será obtido.
+                        }
                         index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
                         RR.originalIntervals <- diff(index.originalSpeaks)
                         SPKI <- PKI(signal.peaksAUX)
@@ -465,6 +461,9 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                   THR(SPKI, NPKI)
             }
       }
+      #-----------------------------------------------------------------------------------
+      #No último bloco, os vetores gerados pelo processamento são armazenados nas listas 
+      #---"noise.peaks", "signal.peaks", "index.Rpeaks", "num.falsePos" e "index.falsePos".
       if (!is.null(num.falsePosAUX)) {
             num.falsePos[[index]] <<- num.falsePosAUX
       }
@@ -473,22 +472,30 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       signal.peaks[[index]] <<- signal.peaksAUX
       index <<- index + 1
 }
+#-----------------------------------------------------------------------------------------
+#Etapa de decisão [PARTE 2]: segunda fase do algoritmo de Pan & Tompkins.
+#No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
+#---listas de sinais atualizados com dados obtidos com a função "classifying.peaks()", (3)
+#---plotados os gráficos resultades da atualização.
 
-#Essa primeira aplicação da função peakDetection() é usada pra obter os thresholds
-peakDetection(dt.signal,Fs*3,Fs)
-initial.THR <- 0.35*apply(peakValues,2,median, na.rm = TRUE)
-#Essa segunda aplicação da função peakDetection() é usada pra obter os valores de picos
-#que serão usados para classíficação
+#A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros iniciais
+#---de classificação "initial.THR".
+peakDetection(dt.signal, fs*3, fs)
+initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
+
+#A segunda aplicação da função "peakDetection()" é usada pra obter os valores dos picos
+#---que serão usados para classíficação.
 peakDetection(dt.signal,80,Fs)
+
 initializingVariables()
+
 mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR, Fs = 360, signal = "dx/dt")
-df.updated <- function(signal.df, signal.peaks, noise.peaks, index.Rpeak) {
-      df.UPDATED[[idx]] <<- signal.df
+
+df.updated <- function(signal.df, signal.peaks, index.Rpeak) {
       signal_Rpeaks <- signal_Npeaks <- rep(NA,length(signal.df$signal_mag))
       signal_Rpeaks[index.Rpeak] <- signal.peaks
-      #signal_Npeaks[-index.Rpeak] <- noise.peaks
+      df.UPDATED[[idx]] <<- signal.df
       df.UPDATED[[idx]]$signal_Rpeaks <<- signal_Rpeaks
-      #df.UPDATED[[idx]]$signal_Npeaks <<- signal_Npeaks
       idx <<- idx + 1
 }
 mapply(df.updated, dt.signal, signal.peaks, noise.peaks, index.Rpeak)
