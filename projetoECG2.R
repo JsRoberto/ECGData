@@ -271,6 +271,7 @@ initializingVariables <- function() {
       RR.originalIntervals <<- list()
       index.falsePos <<- list()
       num.falsePos <<- list()
+      num.falseNeg <<- list()
       signal.peaks <<- list()
       noise.peaks <<- list()
       index.Rpeak <<- list()
@@ -310,8 +311,8 @@ lst2vct <- function(lst) {
 #A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
 #---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
 #---objetivo é gerar as listas "noise.peaks", "signal.peaks", "RR.originalIntervals", 
-#---"index.Rpeaks", "num.falsePos" e "index.falsePos" inicializadas anteriormente pela
-#---função "initializingVariables()".
+#---"index.Rpeaks", "num.falsePos", "num.falseNeg" e "index.falsePos" inicializadas
+#---anteriormente pela função "initializingVariables()".
 #---Como argumentos, são utilizados:
 #---(1) "originalValues", a lista dos sinais cujos picos serão classificados;
 #---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
@@ -372,12 +373,13 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       SPKI <- PKI(signal.peaksAUX)
       NPKI <- PKI(noise.peaksAUX)
       THR(SPKI,NPKI)
-      #As variáveis abaixa são auxiliares para varredura do vetores de picos "peakValues" 
-      #---("index.RpeakAUX") e para obtenção de informações sobre falsos positivos ("indexIn"
-      #---e "num.falsePosAUX").
+      #As variáveis abaixa são auxiliares para varredura do vetor de picos "peakValues" 
+      #---("index.RpeakAUX") e para obtenção de informações sobre falsos positivos e
+      #---negativos ("indexIn", "num.falsePosAUX" e "num.falseNegAUX).
       indexIn <- 1
       index.RpeakAUX <- i
       num.falsePosAUX <- NULL
+      num.falseNegAUX <- NULL
       #-----------------------------------------------------------------------------------
       #O laço "for" abaixo varre todos os valores de picos que ainda serão classificados.
       for (PEAKI in peakValues[(i+1):length(peakValues)]) {
@@ -431,13 +433,17 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         }
                         #As condições abaixo tratam de testar a existência de falsos 
                         #---negativos, ou seja, se entre o último pico R classificado e o 
-                        #---suposto atual existe outro pico R não detectado anteriormente. 
+                        #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
                         if (lastRR.originalInterval > 1.66*mean(RR.originalIntervals)) {
                               peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
                               peakValuesAUX2 <- peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2]
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
                               if (!is.infinite(new.Rpeak)) {
+                                    if (is.null(num.falseNegAUX)) {
+                                          num.falseNegAUX <- 0
+                                    }
+                                    num.falseNegAUX <- num.falseNegAUX + 1
                                     indexRm.Npeak1 <- (1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak]
                                     indexRm.Npeak2 <- (1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)]
                                     signal.peaksAUX <- c(signal.peaksAUX,
@@ -466,9 +472,12 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       #-----------------------------------------------------------------------------------
       #No último bloco, os vetores gerados pelo processamento são armazenados nas listas 
       #---"RR.originalIntervals", "noise.peaks", "signal.peaks", "index.Rpeaks",
-      #---"num.falsePos" e "index.falsePos".
+      #---"num.falsePos", "num.falseNeg" e "index.falsePos".
       if (!is.null(num.falsePosAUX)) {
             num.falsePos[[index]] <<- num.falsePosAUX
+      }
+      if (!is.null(num.falseNegAUX)) {
+            num.falseNeg[[index]] <<- num.falseNegAUX
       }
       index.Rpeak[[index]] <<- index.originalSpeaks
       noise.peaks[[index]] <<- noise.peaksAUX
@@ -500,6 +509,11 @@ initializingVariables()
 mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
 
 dt.signalRRinterval <- RR.originalIntervals
+dt.signalFalsePos <- num.falsePos
+dt.signalFalseNeg <- num.falseNeg
+dt.signalSPeaks <- signal.peaks
+dt.signalNPeaks <- noise.peaks
+dt.signalIndexSpeaks <- index.Rpeak
 
 #A função "df.updated()" atualiza o sinal "signal.df" com imformações sobre a localização 
 #---("index.Rpeak") e a magnitude ("signal.peaks") dos picos desse sinal.
@@ -511,7 +525,7 @@ df.updated <- function(signal.df, signal.peaks, index.Rpeak) {
       idx <<- idx + 1
 }
 
-mapply(df.updated, dt.signal, signal.peaks, index.Rpeak)
+mapply(df.updated, dt.signal, dt.signalSPeaks, dt.signalIndexSpeaks)
 
 dt.signalUPD <- df.UPDATED
 
@@ -527,9 +541,14 @@ initializingVariables()
 
 mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR)
 
-dt.signalRRinterval <- RR.originalIntervals
+mwi.signalRRinterval <- RR.originalIntervals
+mwi.signalFalsePos <- num.falsePos
+mwi.signalFalseNeg <- num.falseNeg
+mwi.signalSPeaks <- signal.peaks
+mwi.signalNPeaks <- noise.peaks
+mwi.signalIndexSpeaks <- index.Rpeak
 
-mapply(df.updated, mwi.signal, signal.peaks, index.Rpeak)
+mapply(df.updated, mwi.signal, mwi.signalSPeaks, mwi.signalIndexSpeaks)
 
 mwi.signalUPD <- df.UPDATED
 
