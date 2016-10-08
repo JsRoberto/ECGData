@@ -266,14 +266,11 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
 #---(7) "index" e "idx", são índices que auxiliam na iteração da função de classificação
 #-------"classifying.peaks()" e na função de atualização "df.updated()", respectivamente.
 initializingVariables <- function() {
-      if (!exists("index.falsePos")) {
-            index.falsePos <<- list()
-      }
-      if (!exists("num.falsePos")) {
-            num.falsePos <<- list()
-      }
-      noise.peaks <<- list()
+      RR.originalIntervals <<- list()
+      index.falsePos <<- list()
+      num.falsePos <<- list()
       signal.peaks <<- list()
+      noise.peaks <<- list()
       index.Rpeak <<- list()
       index <<- 1
       df.UPDATED <<- list()
@@ -368,7 +365,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       index.Speaks <- c(j,i)
       index.originalALLpeaks <- transf(peakIndex)
       index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
-      RR.originalIntervals <- diff(index.originalSpeaks)
+      RR.originalIntervalsAUX <- diff(index.originalSpeaks)
       SPKI <- PKI(signal.peaksAUX)
       NPKI <- PKI(noise.peaksAUX)
       THR(SPKI,NPKI)
@@ -454,7 +451,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                               index.Speaks <- c(index.Speaks, index.RpeakAUX)
                         }
                         index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
-                        RR.originalIntervals <- diff(index.originalSpeaks)
+                        RR.originalIntervalsAUX <- diff(index.originalSpeaks)
                         SPKI <- PKI(signal.peaksAUX)
                   } else {
                         noise.peaksAUX <- c(noise.peaksAUX,PEAKI)
@@ -472,6 +469,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       index.Rpeak[[index]] <<- index.originalSpeaks
       noise.peaks[[index]] <<- noise.peaksAUX
       signal.peaks[[index]] <<- signal.peaksAUX
+      RR.originalIntervals[[index]] <<- RR.originalIntervalsAUX
       index <<- index + 1
 }
 
