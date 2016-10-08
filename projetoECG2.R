@@ -2,7 +2,7 @@
 #Projeto ECG - Aplicação do algoritmo de Pan & Tompkins para detecção de complexos QRS
 #-----------------------------------------------------------------------------------------
 
-#Localização da biblioteca e definição dos pacotes não padrões utilizados.
+#Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
 library(signal)
 library(ggplot2)
@@ -22,12 +22,17 @@ download <- function(Local, Url) {
 
 mapply(download, Local, Url)
 
-#
+#Salvar as variáveis que representam os sinais em formatos adequados
 Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
 Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
 fs <- read.csv("fs.csv")
 fs <- as.numeric(fs)
 
+#A função "dataECGplot()" é a principal função de plotagem código, responsável por mostrar
+#---a evolução do sinal em cada etapa de processamento.
+#---Seus argumentos são:
+#---(1) "Ecg.signalSplit" - define a lista de sinais a serem plotados
+#---(2) "interval_seg" - define o limite de tempo, em segundos,  
 dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
       Ecg.signalsAUX <- data.frame()
       signal_mag <- vector()
@@ -67,7 +72,8 @@ D_lp <- 32*c(1,-2,1)
 H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz
 
 #A função "fz_plot()" pretende gerar gráficos das respostas frequenciais de filtros: 
-#---magnitude (dB e linear) e fase em função da frequencia normalizada. Os argumentos são: 
+#---magnitude (dB e linear) e fase em função da frequencia normalizada.
+#---Seus argumentos são: 
 #---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
 #---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
 #---(3) "Fs" - define a frequencia de amostragem do filtro.
@@ -119,7 +125,7 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
 
 fz_plot(H_lpz, "lp")
 
-#
+#A função "filter_ecgSignals"
 filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
       x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
       x <- as.data.frame(x)
