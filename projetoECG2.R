@@ -368,25 +368,22 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       SPKI <- PKI(signal.peaksAUX)
       NPKI <- PKI(noise.peaksAUX)
       THR(SPKI,NPKI)
-      #As variáveis (1) index.Rpeak e (2) num.falsePos representam (1) o índice do último
-      #pico detectado & (2) a quantidade de falsos positivos (obtidos com a métrica do tempo
-      #entre picos R - 200 ms e 360 ms são os pontos de referência).
+      #As variáveis abaixa são auxiliares para varredura do vetores de picos "peakValues" 
+      #---("index.RpeakAUX") e para obtenção de informações sobre falsos positivos ("indexIn"
+      #---e "num.falsePosAUX").
       indexIn <- 1
       index.RpeakAUX <- i
       num.falsePosAUX <- NULL
-      #O laço for abaixo varre todos os valores de picos que ainda devem ser
-      #classificados
+      #-----------------------------------------------------------------------------------
+      #O laço "for" abaixo varre todos os valores de picos que ainda serão classificados.
       for (PEAKI in peakValues[(i+1):length(peakValues)]) {
             index.RpeakAUX <- index.RpeakAUX + 1
             if (!is.na(PEAKI)) {
                   if (PEAKI > THR1) {
                         lastIndex.originalSpeak <- index.originalSpeaks[length(index.originalSpeaks)]
                         lastRR.originalInterval <- index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak
-                        #As condições seguintes se aplicam apenas ao sinal derivativo
-                        
-                        #As condições abaixo servem para indicar falsos posi-
-                        #-tivos, ou seja, se um pico detectado como R é na verdade
-                        #um pico T.
+                        #As condições abaixo servem para indicar falsos positivos, ou seja,
+                        #---se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
                               if (lastRR.originalInterval > 0.2*Fs) {
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
@@ -428,7 +425,6 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     next
                               }
                         }
-                        
                         ###DETECÇÃO DE FALSOS NEGATIVOS --- ESSE ALGORITMO SE APLICA A AMBOS OS CONJUNTOS DE SINAIS
                         ###ANALISADOS, TANTO O dx/dt quanto o mwi
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
