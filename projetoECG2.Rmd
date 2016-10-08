@@ -1,0 +1,53 @@
+---
+title: "Aplicação de algoritmo para detecção de complexos QRS em base de dados pública"
+author: "José Roberto Sobrinho Lima & Luana Gonçalves"
+date: "2 de outubro de 2016"
+output: pdf_document
+---
+***
+#Relatório  
+***
+
+##1. Introdução e Metodologia  
+
+```{r setoptions}
+knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, results = "hide")
+```
+Doenças cardíacas estão entre as principais causas de mortalidade no mundo. Por esse motivo, há constante preocupação em melhorar o poder diagnóstico de equipamentos que monitoram a condição cardíaca. Uma grande variedade de dispositivos analisa a atividade cardíaca, produzindo informações que facilmente podem ser digitalizadas e processadas por computador. A medida que o poder computacional dessas máquinas cresce, os diagnósticos resultantes apresentam acurácia e precisão maiores.  
+
+Em processamento de eletrocardiogramas (ECG), uma base importante para fundamentar posteriores análises dos dados é a acurácia na detecção de batimentos cardíacos. Nesse sentido, como a energia dos batimentos está localizada nos complexos QRS[nota 1], acurácia na detecção desses complexos é essencial para a análise de ECG.  
+
+Devido à variação ao longo do tempo e aos diferentes tipos de ruído que podem contaminar o sinal ECG, a detecção do complexo QRS é uma tarefa difícil.  
+
+Os algoritmos de detecção dos complexos QRS apresentam duas fases distintas: (1) o estágio de pré-processamento, que consiste em aplicar técnicas de filtragem linear e não linear ou “_smoothing_” – o objetivo é atenuar as ondas P e T, bem como os ruídos contaminantes; e (2) o estágio de decisão, que apresenta como tarefas mais importantes a determinação de “_thresholds_” para classificação e, em alguns casos, a discriminação de ondas T e a redução de falsos positivos.  
+
+O algoritmo de detecção do complexo QRS a ser estudado e aplicado será o algoritmo de _Pan-Thompkins_, cujas etapas de processamento serão abordadas mais adiante. A discussão inclui a análise em pormenor do um código fonte desenvolvido neste trabalho e que utilizou parâmetros previamente estabelecidos em literatura sobre o tema [ref. ÁLVAREZ].  
+
+O algoritmo de _Pan-Thopmpkins_ será aplicado sobre uma base de dados pública, obtida gratuitamente do bando de dados do _Physionet_[nota 2]. Mais especificamente, os dados que utilizaremos foram coletados e armazenados pelo _MIT_ e pelo _Boston’s Beth Israel Hospital_ (_MIT-BIH Arrhythmia Database_) segundo metodologia amplamente submetida a discussões e críticas – **ainda hoje carregando bastante credibilidade e relevância acadêmica**. Além, disso essa base de dados é focada em sinais com as mais diversas morfologias de complexos QRS[nota 3],  o que permite investigar a performance dos algoritmos de detecção desses complexos – daí, portanto, seu extensivo uso para validação desses algoritmos.  
+
+O _MIT-BIH Arrhythmia Database_ contém 48 horas e meia de gravações coletadas utilizando-se dois canais de entrada. Todavia, o código fonte que desenvolvemos processará somente um desses canais: se um desses canais registrar sinais de alta qualidade, normalmente isso implica que o segundo canal registrará sinais de baixa amplitude e de baixa relação sinal-ruído[nota 4] (obs.: talvez mais alguma informação sobre o MIT-BIH).  
+
+Os softwares utilizados serão:   
+(1) _MatLab_, da _Mathworks_ – utilizar-se-á o WFDB Toolbox[nota 5], 
+(2) _RStudio_, linguagem de programação R – ...para realizar o processamento dos sinais de ECG do MIT-BIH é a linguagem de programação R. Seus principais atrativos são seus ferramentais voltados para computação estatística e modelagem gráfica. Além disso, o software é _open source_ e apresenta estrutura multiplataforma.  
+
+O algoritmo de Pan-Thompkins é baseado em filtros digitais, possuindo filtros passa-baixa e passa-alta em cascata e com frequências de cortes diferentes resultando em um sinal filtrado passa-banda.
+
+***
+##2. O código fonte  
+
+O código fonte desenvolvido neste trabalho pode ser dividido em três momentos:  
+
+Fase de estabelecimento → consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_, _lattice_ e _gridExtra_, além do pacote com funções de filtros digitais _signal_, com funções diretamente importadas do MatLab e Octave; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados de cada etapa de processamento dos sinais.  
+
+Fase de pré-processamento → primeiro momento do algoritmo de _Pan & Thompkins_, ela consiste em preparar os sinais para a posterior detecção QRS na fase de decisão, eliminando características indesejadas dos sinais com filtros passa-baixa e passa-alta e realçando características relevantes para tornar mais eficiente a detecção dos complexos QRS.  
+
+Fase de decisão → segundo momento do algoritmo de _Pan & Thompkins_, ela consiste em (1) definir os vetores de picos dos sinais e os parâmetros iniciais de classificação de picos; (2) varrer os valores do vetor de picos, classificando e atualizando os parâmetros de classificação a cada novo valor definido como pico de ruído ou de sinal; (3) utilizar as informações obtidas durante o processo de classificação para eliminar falsos positivos e reintegrar falsos negativos.
+
+###2.1 Fase de estabelecimento  
+
+###2.2 Algoritmo de _Pan & Thompkins_  
+
+####2.2.1 Fase de pré-processamento  
+
+####2.2.2 Fase de decisão  
