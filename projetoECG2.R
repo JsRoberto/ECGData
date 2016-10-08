@@ -9,7 +9,7 @@ library(ggplot2)
 library(lattice)
 library(gridExtra)
 
-#Baixar - caso ainda não tenham sido - os arquivos "mitdb_ecgSignals.csv" e "fs.csv".
+#Baixar os arquivos "mitdb_ecgSignals.csv" e "fs.csv" - caso ainda não tenham sido.
 Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv",
          "https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
 Local <- c("mitdb_ecgSignals.csv","fs.csv")
@@ -22,17 +22,22 @@ download <- function(Local, Url) {
 
 mapply(download, Local, Url)
 
-#Salvar as variáveis que representam os sinais em formatos adequados
+#Salvar em formatos adequados as variáveis que representam os sinais.
 Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
 Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
 fs <- read.csv("fs.csv")
 fs <- as.numeric(fs)
 
-#A função "dataECGplot()" é a principal função de plotagem código, responsável por mostrar
-#---a evolução do sinal em cada etapa de processamento.
+#São obtidos a média "Mean1" e o desvio padrão "Std1" dos sinais não filtrados.
+Mean1 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
+Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
+
+#A função "dataECGplot()" é a principal função de plotagem do código, responsável por 
+#---mostrar a evolução do sinal em cada etapa de processamento.
 #---Seus argumentos são:
-#---(1) "Ecg.signalSplit" - define a lista de sinais a serem plotados
-#---(2) "interval_seg" - define o limite de tempo, em segundos,  
+#---(1) "Ecg.signalSplit" - define a lista de sinais a serem plotados;
+#---(2) "interval_seg" - define o intervalo de tempo em que o plote está delimitado;
+#---(3) "Fs" - define a frequência de amostragem dos sinais.
 dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
       Ecg.signalsAUX <- data.frame()
       signal_mag <- vector()
@@ -58,25 +63,21 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
 }
 
 dataECGplot(Ecg.signalSplit, 25:35)
-
-Mean1 <- 
-St1 <- 
-
 #-----------------------------------------------------------------------------------------
-#Etapa de pré-processamento: primeira fase do algoritmo de Pan & Tompkins
+#Etapa de pré-processamento: primeira fase do algoritmo de Pan & Tompkins.
 
-#Bloco 1 - Filtro passa-baixa
+#Bloco 1 - Filtro passa-baixa.
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
 
 H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz
 
-#A função "fz_plot()" pretende gerar gráficos das respostas frequenciais de filtros: 
-#---magnitude (dB e linear) e fase em função da frequencia normalizada.
+#A função "fz_plot()" pretende gerar gráficos das respostas frequenciais dos filtros: 
+#---magnitude (dB e linear) e fase em função da frequência normalizada.
 #---Seus argumentos são: 
 #---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
 #---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
-#---(3) "Fs" - define a frequencia de amostragem do filtro.
+#---(3) "Fs" - define a frequência de amostragem do filtro.
 fz_plot <- function(filter_freqz, filter_type, Fs = fs){
       df <- data.frame(w = rep(0,length(filter_freqz$f)),
                        mag = rep(0,length(filter_freqz$h)),
@@ -125,7 +126,9 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
 
 fz_plot(H_lpz, "lp")
 
-#A função "filter_ecgSignals"
+#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
+#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
+#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
 filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
       x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
       x <- as.data.frame(x)
@@ -137,9 +140,8 @@ filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
 
 filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
 
-#
-update.filtSignal <- function(Ecg.signals, x_norm) {
-      Ecg.signalSplit <<- split(Ecg.signals, Ecg.signals$signal_case)
+#A função "update.filtSignal()" 
+update.filtSignal <- function(Ecg.signalSplit, x_norm) {
       for (i in 1:length(Ecg.signalSplit)) {
             Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
       }
