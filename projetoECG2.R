@@ -241,13 +241,17 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
       peakIndex <<- peak.index
 }
 
-#
+#A função "initializingVariables()" tem o objetivo de inicializar vriaveis importantes para
+#---construir as listas que armazenarão vários dados importantes do processamento:
+#---(1) "noise.peaks", os vetores dos picos classificados como picos de ruidos;
+#---(2) "signal.peaks", os vetores dos picos classificados como picos R ou picos de sinal;
+#---(3) "index.Rpeak", os vetores dos indices dos picos definidos em "signal.peaks";
+#---(4) "num.falsePos", os números que indicam a quantidade de falsos positivos;
+#---(5) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
+#---(6) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
+#---(7) "index" e "idx", são índices que auxiliam na iteração da função de classificação
+#-------"classifying.peaks()" e na função de atualização "df.updated()", respectivamente.
 initializingVariables <- function() {
-      #As variáveis abaixo são importantes para a atualização correta dos vetores que
-      #indicam os falsos positivos (indices e quantidades; além disso,
-      #um vetor indice de auxílio para obtenção dos outros) (esses valores são
-      #obtidos com base na métrica do tempo entre picos R - 200 ms e 360 ms são
-      #os pontos de referência) de todos os 10 sinais analisados.
       if (!exists("index.falsePos")) {
             index.falsePos <<- list()
       }
@@ -258,12 +262,11 @@ initializingVariables <- function() {
       signal.peaks <<- list()
       index.Rpeak <<- list()
       index <<- 1
-      #As variaveis seguinda servem para a posterior atualização dos dataframes
-      #para incluir uma coluna de signal_Rpeaks
       df.UPDATED <<- list()
       idx <<- 1
 }
 
+#
 PKI <- function(vector.peaks) {
       if (length(vector.peaks)==1) {
             PEAKI <- vector.peaks[1]
