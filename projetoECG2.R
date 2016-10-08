@@ -2,6 +2,7 @@
 #Projeto ECG - Aplicação do algoritmo de Pan & Tompkins para detecção de complexos QRS
 #-----------------------------------------------------------------------------------------
 
+#ETAPA DE ESTABELECIMENTO
 #Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
 library(signal)
@@ -70,7 +71,7 @@ dataECGplot(Ecg.signalSplit, 25:35)
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
 
-H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz
+H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz.
 
 #A função "fz_plot()" pretende gerar gráficos das respostas frequenciais dos filtros: 
 #---magnitude (dB e linear) e fase em função da frequência normalizada.
@@ -150,6 +151,8 @@ update.filtSignal <- function(Ecg.signalSplit, x_norm) {
 
 update.filtSignal(Ecg.signals, x_norm)
 
+dataECGplot(Ecg.signalSplit, 25:35)
+
 #Bloco 2 - Filtro passa-alta.
 N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
 D_hp <- 32*c(1,-1)
@@ -162,6 +165,8 @@ filter_ecgSignals(x_norm, N_hp, D_hp)
 
 update.filtSignal(Ecg.signals, x_norm)
 
+dataECGplot(Ecg.signalSplit, 25:35)
+
 #Bloco 3 - Operador derivativo.
 N_do <- c(2,1,0,-1,-2)
 D_do <- 8
@@ -172,6 +177,8 @@ update.filtSignal(Ecg.signals, x_norm)
 
 dt.signal <- Ecg.signalSplit
 
+dataECGplot(dt.signal, 25:35)
+
 #Bloco 4 - Operador que eleva os valores dos sinais ao quadrado.
 x_norm <- sapply(x_norm, function(x) x^2)
 x_norm <- as.data.frame(x_norm)
@@ -179,6 +186,8 @@ x_norm <- as.data.frame(x_norm)
 filter_ecgSignals(x_norm, 1, 1)
 
 update.filtSignal(Ecg.signals, x_norm)
+
+dataECGplot(Ecg.signalSplit, 25:35)
 
 #Bloco 5 - Janela de integração móvel
 N_if <- rep(1,54)
@@ -190,6 +199,7 @@ update.filtSignal(Ecg.signals,x_norm)
 
 mwi.signal <- Ecg.signalSplit
 
+dataECGplot(mwi.signal, 25:35)
 #-----------------------------------------------------------------------------------------
 #Etapa de decisão: segunda fase do algoritmo de Pan & Tompkins.
 
@@ -266,7 +276,9 @@ initializingVariables <- function() {
       idx <<- 1
 }
 
-#
+#A função "PKI()" tem o objetivo de gerar os parâmetros de NPKI e SPKI utilizados por Pan 
+#---& Tompkins. Se o "vector.peaks" utilizado argumento for "noise.peaks", NPKI é obtido;
+#---se for "signal.peaks", então SPKI é obtido. 
 PKI <- function(vector.peaks) {
       if (length(vector.peaks)==1) {
             PEAKI <- vector.peaks[1]
@@ -276,11 +288,14 @@ PKI <- function(vector.peaks) {
       PEAKI
 }
 
+#A função "THR()" utiliza os parâmetros NPKI e SPKI, obtidos com a função "PKI()", para
+#---gerar os parâmetros de classificação dos picos dos sinais.
 THR <- function(SPKI,NPKI) {
       THR1 <<- NPKI + 0.25*(SPKI - NPKI)
       THR2 <<- 0.5*THR1
 }
 
+#A função "lst2vct()" simplesmente transforma uma lista de vetores em um único vetor.
 lst2vct <- function(lst) {
       vct <- vector()
       for (k in 1:length(lst)) {
@@ -289,6 +304,11 @@ lst2vct <- function(lst) {
       vct
 }
 
+#A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
+#---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
+#---objetivo é gerar as listas "noise.peaks", "signal.peaks", "index.Rpeaks", "num.falsePos"
+# e "index.falsePos" inicializadas
+#---anteriormente pela função "initializingVariables()" -, bem como
 classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
       #O bloco abaixo indentifica os dois primeiros picos R de "peakValues", de acordo com as
       #condições iniciais disponiveis em "initial.THR"
