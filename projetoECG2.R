@@ -57,12 +57,16 @@ dataECGplot(Ecg.signalSplit, 25:35)
 Mean1 <- 
 St1 <- 
 
-#Bloco 1 - Filtro passa-baixa
+#-----------------------------------------------------------------------------------------
+#Primeiro fase do algoritmo de Pan & Tompkins:
+#Etapa de pré-processamento
+#---Bloco 1 - Filtro passa-baixa
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
 
 H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz
 
+#A função "fz_plot"
 fz_plot <- function(filter_freqz, filter_type = "lp", Fs = fs){
       df <- data.frame(w = rep(0,length(filter_freqz$f)),
                        mag = rep(0,length(filter_freqz$h)),
@@ -111,7 +115,8 @@ fz_plot <- function(filter_freqz, filter_type = "lp", Fs = fs){
 
 fz_plot(H_lpz)
 
-filter_ecgSignals <- function(data_ecg, H_Num, H_Den){
+#
+filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
       x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
       x <- as.data.frame(x)
       x_norm <- sapply(x, function(x) {
@@ -122,7 +127,8 @@ filter_ecgSignals <- function(data_ecg, H_Num, H_Den){
 
 filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
 
-update.filtSignal <- function(Ecg.signals, x_norm){
+#
+update.filtSignal <- function(Ecg.signals, x_norm) {
       Ecg.signalSplit <<- split(Ecg.signals, Ecg.signals$signal_case)
       for (i in 1:length(Ecg.signalSplit)) {
             Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
@@ -131,11 +137,11 @@ update.filtSignal <- function(Ecg.signals, x_norm){
 
 update.filtSignal(Ecg.signals, x_norm)
 
-#Bloco 2 - Filtro passa alta
+#---Bloco 2 - Filtro passa-alta
 N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
 D_hp <- 32*c(1,-1)
 
-H_hpz <- freqz(N_hp,D_hp,Fs = Fs)#Fs = 360 Hz admite Fc = 9 Hz
+H_hpz <- freqz(N_hp, D_hp, Fs = Fs)#Fs = 360 Hz admite Fc = 9 Hz
 
 fz_plot(H_hpz, "hp")
 
@@ -147,9 +153,9 @@ update.filtSignal(Ecg.signals, x_norm)
 N_do <- c(2,1,0,-1,-2)
 D_do <- 8
 
-filter_ecgSignals(x_norm,N_do,D_do)
+filter_ecgSignals(x_norm, N_do, D_do)
 
-update.filtSignal(Ecg.signals,x_norm)
+update.filtSignal(Ecg.signals, x_norm)
 
 dt.signal <- Ecg.signalSplit
 
@@ -157,9 +163,9 @@ dt.signal <- Ecg.signalSplit
 x_norm <- sapply(x_norm, function(x) x^2)
 x_norm <- as.data.frame(x_norm)
 
-filter_ecgSignals(x_norm,1,1)
+filter_ecgSignals(x_norm, 1, 1)
 
-update.filtSignal(Ecg.signals,x_norm)
+update.filtSignal(Ecg.signals, x_norm)
 
 #Bloco 5 - Janela de integração móvel
 N_if <- rep(1,54)
@@ -171,6 +177,7 @@ update.filtSignal(Ecg.signals,x_norm)
 
 mwi.signal <- Ecg.signalSplit
 
+#-----------------------------------------------------------------------------------------
 
 peakDetection <- function(updated.dataSplit, samples, Fs) {
       peak.values <- data.frame()
