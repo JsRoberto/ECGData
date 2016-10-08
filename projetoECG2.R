@@ -58,16 +58,20 @@ Mean1 <-
 St1 <- 
 
 #-----------------------------------------------------------------------------------------
-#Primeiro fase do algoritmo de Pan & Tompkins:
-#Etapa de pré-processamento
-#---Bloco 1 - Filtro passa-baixa
+#Etapa de pré-processamento: primeira fase do algoritmo de Pan & Tompkins
+
+#Bloco 1 - Filtro passa-baixa
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
 
 H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz
 
-#A função "fz_plot"
-fz_plot <- function(filter_freqz, filter_type = "lp", Fs = fs){
+#A função "fz_plot()" pretende gerar gráficos das respostas frequenciais de filtros: 
+#---magnitude (dB e linear) e fase em função da frequencia normalizada. Os argumentos são: 
+#---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
+#---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
+#---(3) "Fs" - define a frequencia de amostragem do filtro.
+fz_plot <- function(filter_freqz, filter_type, Fs = fs){
       df <- data.frame(w = rep(0,length(filter_freqz$f)),
                        mag = rep(0,length(filter_freqz$h)),
                        mag_dB = rep(0,length(filter_freqz$h)),
@@ -113,7 +117,7 @@ fz_plot <- function(filter_freqz, filter_type = "lp", Fs = fs){
       grid.arrange(p1 + labs_title, p2, p3 + labs_x, nrow=3)
 }
 
-fz_plot(H_lpz)
+fz_plot(H_lpz, "lp")
 
 #
 filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
