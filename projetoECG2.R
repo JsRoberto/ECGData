@@ -477,8 +477,10 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 #No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
 #---listas de sinais atualizados com dados obtidos com a função "classifying.peaks()", (3)
 #---plotados os gráficos resultades da atualização.
-#---Esses procedimentos serão aplicados tanto à lista de sinais "dt.signals" quanto à "
+#---Esses procedimentos serão aplicados tanto à lista de sinais "dt.signal" quanto à lista
+#---"mwi.signal".
 
+#Aplicação sobre a lista "dt.signal".
 #A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros iniciais
 #---de classificação "initial.THR".
 peakDetection(dt.signal, fs*3, fs)
@@ -506,15 +508,20 @@ mapply(df.updated, dt.signal, signal.peaks, noise.peaks, index.Rpeak)
 
 dt.signalUPD <- df.UPDATED
 
+dataECGplot(dt.signalUPD, 25:35)
 
+#Aplicação sobre a lista "mwi.signal
 peakDetection(mwi.signal,Fs*3,Fs)
 initial.THR <- 0.35*apply(peakValues,2,median, na.rm = TRUE)
-#Essa segunda aplicação da função peakDetection() é usada pra obter os valores de picos
-#que serão usados para classificação
+
 peakDetection(mwi.signal,80,Fs)
+
 initializingVariables()
-mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR, Fs = 360, signal = "dx/dt")
+
+mapply(classifying.peaks, mwi.signal, peakValues, peakIndex, initial.THR, Fs = fs)
+
+mapply(df.updated, mwi.signal, signal.peaks, index.Rpeak)
+
 mwi.signalUPD <- df.UPDATED
-dataECGplot(dt.signalUPD,25:35)
-dataECGplot(mwi.signalUPD,25:35)
-mapply(df.updated, mwi.signal, signal.peaks, noise.peaks, index.Rpeak)
+
+dataECGplot(mwi.signalUPD, 25:35)
