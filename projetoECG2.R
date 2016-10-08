@@ -255,15 +255,17 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
       peakIndex <<- peak.index
 }
 
-#A função "initializingVariables()" tem o objetivo de inicializar vriaveis importantes para
-#---construir as listas que armazenarão vários dados importantes do processamento:
-#---(1) "noise.peaks", os vetores dos picos classificados como picos de ruidos;
+#A função "initializingVariables()" tem o objetivo de inicializar variáveis importantes 
+#---para construir as listas que armazenarão vários dados importantes do processamento:
+#---(1) "noise.peaks", os vetores dos picos classificados como picos de ruido;
 #---(2) "signal.peaks", os vetores dos picos classificados como picos R ou picos de sinal;
 #---(3) "index.Rpeak", os vetores dos indices dos picos definidos em "signal.peaks";
-#---(4) "num.falsePos", os números que indicam a quantidade de falsos positivos;
-#---(5) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
-#---(6) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
-#---(7) "index" e "idx", são índices que auxiliam na iteração da função de classificação
+#---(4) "RR.originalIntervals", os vetores das distâncias entre os picos definidos em 
+#-------"signal.peaks", segundo as localizações originais no sinal;
+#---(5) "num.falsePos", os números que indicam a quantidade de falsos positivos;
+#---(6) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
+#---(7) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
+#---(8) "index" e "idx", são índices que auxiliam na iteração da função de classificação
 #-------"classifying.peaks()" e na função de atualização "df.updated()", respectivamente.
 initializingVariables <- function() {
       RR.originalIntervals <<- list()
@@ -307,8 +309,9 @@ lst2vct <- function(lst) {
 
 #A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
 #---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
-#---objetivo é gerar as listas "noise.peaks", "signal.peaks", "index.Rpeaks", "num.falsePos"
-#---e "index.falsePos" inicializadas anteriormente pela função "initializingVariables()".
+#---objetivo é gerar as listas "noise.peaks", "signal.peaks", "RR.originalIntervals", 
+#---"index.Rpeaks", "num.falsePos" e "index.falsePos" inicializadas anteriormente pela
+#---função "initializingVariables()".
 #---Como argumentos, são utilizados:
 #---(1) "originalValues", a lista dos sinais cujos picos serão classificados;
 #---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
@@ -494,6 +497,8 @@ peakDetection(dt.signal, 80, fs)
 initializingVariables()
 
 mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
+
+dt.signalRRinterval <- RR.originalIntervals
 
 #A função "df.updated()" atualiza o sinal "signal.df" com imformações sobre a localização 
 #---("index.Rpeak") e a magnitude ("signal.peaks") dos picos desse sinal.
