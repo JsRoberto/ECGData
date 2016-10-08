@@ -307,11 +307,17 @@ lst2vct <- function(lst) {
 #A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
 #---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
 #---objetivo é gerar as listas "noise.peaks", "signal.peaks", "index.Rpeaks", "num.falsePos"
-# e "index.falsePos" inicializadas
-#---anteriormente pela função "initializingVariables()" -, bem como
+#---e "index.falsePos" inicializadas anteriormente pela função "initializingVariables()".
+#---Como argumentos, são utilizados:
+#---(1) "originalValues", a lista dos sinais cujos picos serão classificados;
+#---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
+#---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
+#---(4) "Fs", frequencia de amostragem dos sinais.   
 classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
-      #O bloco abaixo indentifica os dois primeiros picos R de "peakValues", de acordo com as
-      #condições iniciais disponiveis em "initial.THR"
+      #-----------------------------------------------------------------------------------
+      #O bloco abaixo identifica os dois primeiros picos R de "peakValues", de acordo com
+      #---as condições iniciais "initial.THR". Há, também, a necessidade de identificar os
+      #---missing values ou NAs de "peakValues".  
       aux <- j <- 0
       auxNAsup <- auxNAinf <- 0
       for (i in 1:length(peakValues)) {
@@ -332,13 +338,14 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                   }
             }
       }
-      #O bloco abaixo inicializa os vetores de classificação (noise.peaks e signal.peaks),
-      #vetores de indices dos picos Rs do sinal de picos "peakValues" (index.Speaks) e um vetor que
-      #armazena a distancia entre amostras para esses picos R (rr.intervals).
-      #Além disso, os valores iniciais são usados para definir os parâmetros
-      #iniciais de classificação - futuramente, a cada novo sinal classificado,
-      #os parâmetros SPKI, NPKI, THR1 e THR2 serão atualizados.
-      #PAREI AQUI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      #O bloco a seguir inicializa os vetores de classificação "noise.peaksAUX" e 
+      #---"signal.peaksAUX"; o vetor de índices dos picos R "index.Speaks", referente a 
+      #---"peakValues"; o vetor "RR.originalIntervals", que armazena a distância entre
+      #---amostras de "signal.peaksAUX"; os vetores "index.originalALLpeaks" e 
+      #---"index.originalSpeaks", que representam os índices, referentes ao sinal original,
+      #---de todos os picos e dos picos de sinal, respectivamente.
+      #---Além disso, os valores iniciais acima são utilizados para definir os primeiros
+      #---parâmetros de classificação - "SPKI", "NPKI", "THR1" e "THR2".
       if (auxNAsup[1] == 0 & auxNAinf[1] == 0) {
             noise.peaksAUX <- peakValues[1:i][-i][-j]
       } else {
