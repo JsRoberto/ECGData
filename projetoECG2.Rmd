@@ -336,9 +336,11 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
 
 A natureza dos parâmetros de classificação do algoritmo de Pan & Tompkins é iterativa, ou seja, a cada novo pico classificado, os parâmetros são atualizados para classificar os seguintes. Todavia, cabe a dúvida: como classificar os primeiros picos?  
 
-A solução foi obter um parâmetro classificatório inicial e fixo, a fim de determinar o tipo, se de ruido ou de sinal, da menor quantidade de picos necessária para, a partir daí, utilizar o algoritmo do parâmetro de classificação adaptativo.  
+A solução foi obter um parâmetro classificatório inicial e fixo, a fim de determinar os tipos, se de ruido ou de sinal, da menor quantidade de picos necessária para, a partir daí, utilizar o algoritmo do parâmetro de classificação adaptativo.  
 
 Assim, o parâmetro inicial e fixo foi obtido calculando-se 35 % do valor da mediana do vetor de picos do sinal, quando este foi segmentado em intervalos de 3 segundos ou `r 3*fs` amostras. Esse valor se justifica devido ao seguinte raciocínio: a frequência cardíaca minima do ser humano é de 25 batimentos/min, ou seja, um batimento a cada 2,4 segundos; então, a cada 3 segundos, com certeza há pelo menos um pico R em um sinal de ECG.  
+
+A partir daí, um novo vetor de picos foi gerado a partir de segmentação em intervalos de 80 amostras: intervalos menores detectariam muitos picos, enquanto intervalos maiores poderiam não detectar alguns ou muitos deles. Será precisamente este novo vetor que deverá ser classificado, primeiramente usando o parâmetro inicial fixo e posteriormente o parâmetro adaptativo.
 
 ```{r}
 #Aplicação sobre a lista "dt.signal".
@@ -352,11 +354,11 @@ initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
 peakDetection(dt.signal, 80, fs)
 ```
 
+
+
 Os parâmetros de classificação variam de acordo com o ruído que é detectado pelo algoritmo, atualizando automaticamente suas diretrizes a cada nova classificação feita, demonstrando que o algoritmo possui alta adaptabilidade ao se ajustar às características específicas do sinal.  
 
 Para realizar esta atualização constante de parâmetros, primeiro é necessário uma detecção dos picos, considerando um pico como um máximo local de um segmento do sinal. Todos esses picos devem ser classificados, ou como picos de ruído ou como picos de sinal. Assim, pois, foi desenvolvida uma função que segmentava o sinal em intervalos fixos, cujos máximos locais eram obtidos. Contudo, em virtude na natureza iterativa dos parâmetros de classificação desses picos, eram necessário estabelece um parâmetro fixo para classificar os primeiros picos. Somente depois que o número mínimo de picos classificados foi obtidos, essa informação foi utilizados para começar a gerar os parâmetros adaptativos.  
-
-nesta aplicação intervalo foi definido como 80ms. Um intervalo menor detectaria muitos picos, enquanto que um grande intervalo poderia não detectar alguns deles.
 
 
 **Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**
