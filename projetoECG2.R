@@ -36,9 +36,9 @@ fs <- as.numeric(fs)
 Mean1 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
 Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
 
-#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
-#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
-#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
+#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o 
+#---filtro definido por uma função de transferência com numerador "H_Num" e denominador
+#---"H_Den". Além disso, o sinal filtrado resultante "x_norm" está normalizado.
 filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
       x <- lapply(data_ecgSplit, function(x) x$signal_mag - mean(x$signal_mag))
       x <- sapply(x, filter, filt = H_Num, a = H_Den)
@@ -51,8 +51,8 @@ filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
 
 filter_ecgSignals(Ecg.signalSplit, 1, 1)
 
-#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
-#---lista de valores filtrados e normalizados "x_norm".
+#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit"
+#---pela lista de valores filtrados e normalizados "x_norm".
 update.filtSignal <- function(Ecg.signalSplit, x_norm) {
       for (i in 1:length(Ecg.signalSplit)) {
             Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
@@ -222,9 +222,9 @@ dataECGplot(mwi.signal, 25:35)
 #---dos picos dos sinais.
 
 #A função "peakDetection()" apresenta como argumentos (a) "updated.dataSplit", uma lista
-#---de sinais atualizada pela função "update.filtSignal()", (b) "samples", a quantidade de 
-#---amostras que terá cada segmento de um sinal, (c) "Fs", a frequência de amostragem dos 
-#---sinais.
+#---de sinais atualizada pela função "update.filtSignal()", (b) "samples", a quantidade
+#---de amostras que terá cada segmento de um sinal, (c) "Fs", a frequência de amostragem
+#---dos sinais.
 #---O objetivo desta função é obter duas listas: 
 #---(1) "peakValues", que armazena os vetores de picos de cada sinal;
 #---(2) "peakIndex", que armazena os vetores de índices de cada pico.
@@ -314,15 +314,6 @@ THR <- function(SPKI, NPKI) {
       THR2 <<- 0.5*THR1
 }
 
-#A função "lst2vct()" simplesmente transforma uma lista de vetores em um único vetor.
-lst2vct <- function(lst) {
-      vct <- vector()
-      for (k in 1:length(lst)) {
-            vct <- c(vct,lst[[k]])
-      }
-      vct
-}
-
 #A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
 #---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
 #---objetivo é gerar as listas "noise.peaks", "signal.peaks", "RR.originalIntervals", 
@@ -334,6 +325,15 @@ lst2vct <- function(lst) {
 #---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
 #---(4) "Fs", frequencia de amostragem dos sinais.
 classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
+      #A função "lst2vct()" simplesmente transforma uma lista de vetores em um único 
+      #---vetor, o que será necessário mais adiante.
+      lst2vct <- function(lst) {
+            vct <- vector()
+            for (k in 1:length(lst)) {
+                  vct <- c(vct,lst[[k]])
+            }
+            vct
+      }
       #-----------------------------------------------------------------------------------
       #O bloco abaixo identifica os dois primeiros picos R de "peakValues", de acordo com
       #---as condições iniciais "initial.THR". Há, também, a necessidade de identificar os
@@ -511,8 +511,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 #---tanto à lista de sinais "dt.signal" quanto à lista "mwi.signal".
 
 #Aplicação sobre a lista "dt.signal".
-#A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros iniciais
-#---de classificação "initial.THR".
+#A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros 
+#---iniciais de classificação "initial.THR".
 peakDetection(dt.signal, fs*3, fs)
 initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
 

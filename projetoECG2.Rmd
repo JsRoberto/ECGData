@@ -354,11 +354,46 @@ initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
 peakDetection(dt.signal, 80, fs)
 ```
 
+O algoritmo para obtenção dos parâmetros adaptativos consiste nas seguintes variáveis de iteração:  
+
+SPKI = 0.125 × PEAKI + 0.875 × SPKI **(1)**  
+NPKI = 0.125 × PEAKI + 0.875 × NPKI **(2)**  
+THR1 = NPKI + 0.25 × (SPKI - NPKI) **(3)**  
+THR2 = 0.5 × THR1 **(4)**  
+
+Onde PEAKI é o pico corrente, aplicado sobre a função **(1)** se for um pico de sinal ou sobre a função **(2)** se for um pico de ruido; e as variáveis THR1 e THR2 de **(3)** e **(4)**, respectivamente, são os parâmetros de classificação que se adaptam a cada novo pico classificado.
+
+O código abaixo auxilia na obtenção dessas variáveis.  
+
+```{r}
+#A função "PKI()" tem o objetivo de gerar os parâmetros de NPKI e SPKI utilizados por Pan 
+#---& Tompkins. Se o "vector.peaks" utilizado argumento for "noise.peaks", NPKI é obtido;
+#---se for "signal.peaks", então SPKI é obtido. 
+PKI <- function(vector.peaks) {
+      if (length(vector.peaks)==1) {
+            PEAKI <- vector.peaks[1]
+      } else {
+            PEAKI <- 0.125*vector.peaks[length(vector.peaks)] + 0.875*PKI(vector.peaks[-length(vector.peaks)])
+      }
+      PEAKI
+}
+
+#A função "THR()" utiliza os parâmetros NPKI e SPKI, obtidos com a função "PKI()", para
+#---gerar os parâmetros de classificação dos picos dos sinais.
+THR <- function(SPKI, NPKI) {
+      THR1 <<- NPKI + 0.25*(SPKI - NPKI)
+      THR2 <<- 0.5*THR1
+}
+```
+
+O parâmetro THR1 é o principal fator de classificação: se o valor do pico corrente for maior que THR1, ele é classificado como pico de sinal; caso contrário, como pico de ruido. Contudo, existem alguns picos de sinal não detectados, ou devido à irregularidade do sinal, ou devido a formas de ondas com mudanças abruptas de amplitude ou frequência. Ou seja, o método inclui algoritmo para eliminar _**falsos negativos**_.  
+
+Algoritmo para detecção e reintegração de _**falsos negativos**_ → se o intervalo entre os dois últimos picos R detectados for maior que 166 % da média das distâncias entre todos os demais pares de picos R adjacentes, então uma nova condição é testada para verificar a existência de picos R não detectados: ser simultaneamente menor que THR1 e maior que THR2.  
+Um novo problema surge quando a distância entre picos R é pequenos demais: a grande possibilidade de ser uma forma de onde T 
 
 
+ 
+***
 Os parâmetros de classificação variam de acordo com o ruído que é detectado pelo algoritmo, atualizando automaticamente suas diretrizes a cada nova classificação feita, demonstrando que o algoritmo possui alta adaptabilidade ao se ajustar às características específicas do sinal.  
-
-Para realizar esta atualização constante de parâmetros, primeiro é necessário uma detecção dos picos, considerando um pico como um máximo local de um segmento do sinal. Todos esses picos devem ser classificados, ou como picos de ruído ou como picos de sinal. Assim, pois, foi desenvolvida uma função que segmentava o sinal em intervalos fixos, cujos máximos locais eram obtidos. Contudo, em virtude na natureza iterativa dos parâmetros de classificação desses picos, eram necessário estabelece um parâmetro fixo para classificar os primeiros picos. Somente depois que o número mínimo de picos classificados foi obtidos, essa informação foi utilizados para começar a gerar os parâmetros adaptativos.  
-
 
 **Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**
