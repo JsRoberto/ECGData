@@ -157,9 +157,7 @@ O estágio de decisão consiste em obter e atualizar constantemente parâmetros 
 
 ####2.2.1 Fase de pré-processamento  
 
-Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata para construir um passa-banda de entre 9-20 Hz com 3 dB de atenuação [ref. RANGAYYAN]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).
-Em seguida, um operador derivativo é aplicado para filtrar a saída, fornecendo complexas informações sobre as inclinações. A partir de então, eleva-se ao quadrado ponto a ponto, o que intensifica a inclinação do sinal derivado e ajuda a reduzir falsos positivos causados por ondas T maiores que as usuais.
-Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150ms - isso corresponde a `r 0.15*fs` amostras. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
+Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata, com o intuito de construir um passa-banda entre 9-20 Hz com 3 dB de atenuação [ref. RANGAYYAN]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).  
 
 ```{r graph2, fig.height = 4, fig.width = 4, fig.align = "center"}
 #Bloco 1 - Filtro passa-baixa.
@@ -240,7 +238,9 @@ update.filtSignal(Ecg.signalSplit, x_norm)
 
 fz_plot(H_hpz, "hp")
 ```
-  
+
+Em seguida, um operador derivativo é aplicado sobre o sinal filtrado anteriormente, fornecendo informações complexas sobre as inclinações. A partir daí, eleva-se ao quadrado ponto a ponto, o que intensifica a inclinação do sinal derivado e ajuda a reduzir falsos positivos causados por ondas T maiores que as usuais.  
+
 ```{r graph4}
 #Bloco 3 - Operador derivativo.
 N_do <- c(2,1,0,-1,-2)
@@ -253,16 +253,18 @@ update.filtSignal(Ecg.signalSplit, x_norm)
 dt.signal <- Ecg.signalSplit
 
 dataECGplot(dt.signal, 25:35)
-```
-  
-```{r graph5}
+
 #Bloco 4 - Operador que eleva os valores dos sinais ao quadrado.
 x_norm <- lapply(x_norm, function(x) x - mean(x))
 x_norm <- sapply(x_norm, function(x) x^2)
 x_norm <- as.data.frame(x_norm)
 
 update.filtSignal(Ecg.signalSplit, x_norm)
+```  
 
+Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150ms - isso corresponde a `r 0.15*fs` amostras. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
+
+```{r graph5}
 #Bloco 5 - Janela de integração móvel
 N_if <- rep(1,54)
 D_if <- 54
@@ -275,6 +277,11 @@ mwi.signal <- Ecg.signalSplit
 
 dataECGplot(mwi.signal, 25:35)
 ```
+
 ####2.2.2 Fase de decisão  
 
-Esta fase consiste em (1) definir os vetores de picos dos sinais e os parâmetros iniciais de classificação de picos; (2) varrer os valores do vetor de picos, classificando e atualizando os parâmetros de classificação a cada novo valor definido como pico de ruído ou de sinal; (3) utilizar as informações obtidas durante o processo de classificação para eliminar falsos positivos e reintegrar falsos negativos.
+Uma vez que o sinal é pré-processado, ele está preparado para a detecção dos complexo QRS. Nesse estágio dois conjuntos de limiares são aplicados aos dois, ECG filtrado e o sinal depois da janela de integração. Por usar limiares nos dois sinais, a confiabilidade da detecção está na comparação.  
+
+O limiares de detecção variam de acordo com o ruído que é detectado pelo algoritmo, ajustando-os ao sinal e mudando automaticamente as condições. Para essa realização, primeiro é necessário uma detecção dos picos, considerando que os picos é um máximo local, todos os picos devem ser classificados como ruído ou sinal, de acordo com o limiar estabelecido.  
+
+Foi desenvolvido um algoritmo de detecção de máximos locais, definido como pico o valor mais alto em um intervalo, nesta aplicação intervalo foi definido como 80ms. Um intervalo menor detectaria muitos picos, enquanto que um grande intervalo poderia não detectar alguns dele.
