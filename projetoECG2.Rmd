@@ -153,7 +153,7 @@ dataECGplot(Ecg.signalSplit, 25:35)
 O método que Pan & Tompkins desenvolveram para realizar a detecção dos complexos QRS de sinais de ECG é capaz de realizar a tarefa em tempo. Para tanto, o algoritmo é baseado na inclinação, amplitude e tamanho do sinal - não se limita, pois, somente à inclinação da onda R do sinal.  
 Esse algoritmo é divido em dois estágios, pré-processamento e decisão.  
 O estágio de pré-processamento consiste em preparar os sinais para a posterior detecção, eliminando os ruidos dos sinais mediante filtros e realçando a inclinação QRS para tornar mais eficiente sua detecção.  
-O estágio de decisão consiste em obter e atualizar constantemente parâmetros de classificação para determinar se os picos detectados são oriundos de ruidos ou se são próprios do sinal. As informações obtidas durante essa etapa são utilizadas principalmente para eliminar falsos positivos e reintegrar falsos negativos.
+O estágio de decisão consiste em (1) detectar os picos dos sinais, (2) obter e atualizar constantee automaticamente parâmetros que classifiquem esses picos detectados, ou como oriundos de ruidos, ou como próprios do sinal. As informações obtidas durante essa etapa são utilizadas principalmente para eliminar falsos positivos e reintegrar falsos negativos.
 
 ####2.2.1 Fase de pré-processamento  
 
@@ -280,10 +280,83 @@ dataECGplot(mwi.signal, 25:35)
 
 ####2.2.2 Fase de decisão  
 
-Uma vez que o sinal é pré-processado, ele está preparado para a detecção dos complexo QRS. Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.  
+Uma vez que o sinal é pré-processado, ele está preparado para a detecção dos complexos QRS. Como dito anteriormente, essa fase tem o objetivo de detectar picos e classificá-los. Esse procedimento será aplicado a dois conjuntos de sinais: o primeiro é o conjunto de sinais filtrados pelo bloco derivativo (doravante _dt.signal_) e o segundo é o cojunto de sinais filtrado pela janela de integração (doravante _mwi.signal_).  
+
+O código que realiza a detecção de picos se apresenta abaixo.  
+
+```{r}
+#A função "peakDetection()" apresenta como argumentos (a) "updated.dataSplit", uma lista
+#---de sinais atualizada pela função "update.filtSignal()", (b) "samples", a quantidade
+#---de amostras que terá cada segmento de um sinal, (c) "Fs", a frequência de amostragem
+#---dos sinais.
+#---O objetivo desta função é obter duas listas: 
+#---(1) "peakValues", que armazena os vetores de picos de cada sinal;
+#---(2) "peakIndex", que armazena os vetores de índices de cada pico.
+peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
+      peak.values <- data.frame()
+      peak.index <- list()
+      k <- 0:(Fs*60/samples)*samples
+      for (i in 1:(Fs*60/samples)) {
+            if (i == Fs*60/samples) {
+                  k[i+1] <- k[i+1] + 1
+            }
+            peak.intervalAUX <- lapply(updated.dataSplit,
+                                       function(x) x$signal_mag[(k[i]+1):k[i+1]])
+            peak.valuesAUX <- lapply(peak.intervalAUX,max)
+            peak.indexAUX <- mapply(function(peak,intmag) (k[i]:k[1+i])[intmag==peak],
+                                    peak.valuesAUX,peak.intervalAUX)
+            maximum <- 0
+            for (l in 1:length(updated.dataSplit)){
+                  if (length(peak.indexAUX[[l]]) > maximum) {
+                        maximum <- length(peak.indexAUX[[l]])
+                  }
+            }
+            if (maximum > 1) {
+                  for (aux in 1:length(updated.dataSplit)) {
+                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],length(peak.indexAUX[[aux]])),
+                                                   rep(NA, maximum - length(peak.indexAUX[[aux]])))
+                        peak.indexAUX[[aux]] <- c(peak.indexAUX[[aux]],
+                                                  rep(NA,maximum - length(peak.indexAUX[[aux]])))
+                  }
+            }
+            peak.valuesAUX <- as.data.frame(peak.valuesAUX)
+            peak.values <- rbind(peak.values,peak.valuesAUX)
+            for (j in 1:length(updated.dataSplit)) {
+                  if (length(peak.index) < j) {
+                        peak.index[[j]] <- list()
+                  }
+                  peak.index[[j]][[i]] <- peak.indexAUX[[j]]
+            }
+      }
+      peakValues <<- as.data.frame(peak.values,
+                                   row.names = 1:dim(peak.values)[1])
+      peakIndex <<- peak.index
+}
+```
+
+A natureza dos parâmetros de classificação do algoritmo de Pan & Tompkins é iterativa, ou seja, a cada novo pico classificado, os parâmetros são atualizados para classificar os seguintes. Todavia, cabe a dúvida: como classificar os primeiros picos?  
+
+A solução foi obter um parâmetro classificatório inicial e fixo, a fim de determinar o tipo, se de ruido ou de sinal, da menor quantidade de picos necessária para, a partir daí, utilizar o algoritmo do parâmetro de classificação adaptativo.  
+
+Assim, o parâmetro inicial e fixo foi obtido calculando-se 35 % do valor da mediana do vetor de picos do sinal, quando este foi segmentado em intervalos de 3 segundos ou `r 3*fs` amostras. Esse valor se justifica devido ao seguinte raciocínio: a frequência cardíaca minima do ser humano é de 25 batimentos/min, ou seja, um batimento a cada 2,4 segundos; então, a cada 3 segundos, com certeza há pelo menos um pico R em um sinal de ECG.  
+
+```{r}
+#Aplicação sobre a lista "dt.signal".
+#A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros 
+#---iniciais de classificação "initial.THR".
+peakDetection(dt.signal, fs*3, fs)
+initial.THR <- 0.35*apply(peakValues, 2, median, na.rm = TRUE)
+
+#A segunda aplicação da função "peakDetection()" é usada pra obter os valores dos picos
+#---que serão usados para classificação.
+peakDetection(dt.signal, 80, fs)
+```
 
 Os parâmetros de classificação variam de acordo com o ruído que é detectado pelo algoritmo, atualizando automaticamente suas diretrizes a cada nova classificação feita, demonstrando que o algoritmo possui alta adaptabilidade ao se ajustar às características específicas do sinal.  
 
 Para realizar esta atualização constante de parâmetros, primeiro é necessário uma detecção dos picos, considerando um pico como um máximo local de um segmento do sinal. Todos esses picos devem ser classificados, ou como picos de ruído ou como picos de sinal. Assim, pois, foi desenvolvida uma função que segmentava o sinal em intervalos fixos, cujos máximos locais eram obtidos. Contudo, em virtude na natureza iterativa dos parâmetros de classificação desses picos, eram necessário estabelece um parâmetro fixo para classificar os primeiros picos. Somente depois que o número mínimo de picos classificados foi obtidos, essa informação foi utilizados para começar a gerar os parâmetros adaptativos.  
 
 nesta aplicação intervalo foi definido como 80ms. Um intervalo menor detectaria muitos picos, enquanto que um grande intervalo poderia não detectar alguns deles.
+
+
+**Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**
