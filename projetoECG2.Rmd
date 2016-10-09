@@ -80,9 +80,9 @@ Std1
 ```
   
 ```{r}
-#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
-#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
-#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
+#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o 
+#---filtro definido por uma função de transferência com numerador "H_Num" e denominador
+#---"H_Den". Além disso, o sinal filtrado resultante "x_norm" está normalizado.
 filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
       x <- lapply(data_ecgSplit, function(x) x$signal_mag - mean(x$signal_mag))
       x <- sapply(x, filter, filt = H_Num, a = H_Den)
@@ -95,8 +95,8 @@ filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
 
 filter_ecgSignals(Ecg.signalSplit, 1, 1)
 
-#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
-#---lista de valores filtrados e normalizados "x_norm".
+#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit"
+#---pela lista de valores filtrados e normalizados "x_norm".
 update.filtSignal <- function(Ecg.signalSplit, x_norm) {
       for (i in 1:length(Ecg.signalSplit)) {
             Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
@@ -262,7 +262,7 @@ x_norm <- as.data.frame(x_norm)
 update.filtSignal(Ecg.signalSplit, x_norm)
 ```  
 
-Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150ms - isso corresponde a `r 0.15*fs` amostras. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
+Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150 ms - isso corresponde a `r 0.15*fs` amostras. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
 
 ```{r graph5}
 #Bloco 5 - Janela de integração móvel
@@ -280,8 +280,10 @@ dataECGplot(mwi.signal, 25:35)
 
 ####2.2.2 Fase de decisão  
 
-Uma vez que o sinal é pré-processado, ele está preparado para a detecção dos complexo QRS. Nesse estágio dois conjuntos de limiares são aplicados aos dois, ECG filtrado e o sinal depois da janela de integração. Por usar limiares nos dois sinais, a confiabilidade da detecção está na comparação.  
+Uma vez que o sinal é pré-processado, ele está preparado para a detecção dos complexo QRS. Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.  
 
-O limiares de detecção variam de acordo com o ruído que é detectado pelo algoritmo, ajustando-os ao sinal e mudando automaticamente as condições. Para essa realização, primeiro é necessário uma detecção dos picos, considerando que os picos é um máximo local, todos os picos devem ser classificados como ruído ou sinal, de acordo com o limiar estabelecido.  
+Os parâmetros de classificação variam de acordo com o ruído que é detectado pelo algoritmo, atualizando automaticamente suas diretrizes a cada nova classificação feita, demonstrando que o algoritmo possui alta adaptabilidade ao se ajustar às características específicas do sinal.  
 
-Foi desenvolvido um algoritmo de detecção de máximos locais, definido como pico o valor mais alto em um intervalo, nesta aplicação intervalo foi definido como 80ms. Um intervalo menor detectaria muitos picos, enquanto que um grande intervalo poderia não detectar alguns dele.
+Para realizar esta atualização constante de parâmetros, primeiro é necessário uma detecção dos picos, considerando um pico como um máximo local de um segmento do sinal. Todos esses picos devem ser classificados, ou como picos de ruído ou como picos de sinal. Assim, pois, foi desenvolvida uma função que segmentava o sinal em intervalos fixos, cujos máximos locais eram obtidos. Contudo, em virtude na natureza iterativa dos parâmetros de classificação desses picos, eram necessário estabelece um parâmetro fixo para classificar os primeiros picos. Somente depois que o número mínimo de picos classificados foi obtidos, essa informação foi utilizados para começar a gerar os parâmetros adaptativos.  
+
+nesta aplicação intervalo foi definido como 80ms. Um intervalo menor detectaria muitos picos, enquanto que um grande intervalo poderia não detectar alguns deles.
