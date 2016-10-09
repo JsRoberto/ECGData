@@ -336,8 +336,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       }
       #-----------------------------------------------------------------------------------
       #O bloco abaixo identifica os dois primeiros picos R de "peakValues", de acordo com
-      #---as condições iniciais "initial.THR". Há, também, a necessidade de identificar os
-      #---missing values ou NAs de "peakValues".  
+      #---as condições iniciais "initial.THR". Há, também, a necessidade de identificar 
+      #---os missing values ou NAs de "peakValues".  
       aux <- j <- 0
       auxNAsup <- auxNAinf <- 0
       for (i in 1:length(peakValues)) {
@@ -362,8 +362,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       #---"signal.peaksAUX"; o vetor de índices dos picos R "index.Speaks", referente a 
       #---"peakValues"; o vetor "RR.originalIntervalsAUX", que armazena a distância entre
       #---amostras de "signal.peaksAUX"; os vetores "index.originalALLpeaks" e 
-      #---"index.originalSpeaks", que representam os índices, referentes ao sinal original,
-      #---de todos os picos e dos picos de sinal, respectivamente.
+      #---"index.originalSpeaks", que representam os índices, referentes ao sinal
+      #---original, de todos os picos e dos picos de sinal, respectivamente.
       #---Além disso, os valores iniciais acima são utilizados para definir os primeiros
       #---parâmetros de classificação - "SPKI", "NPKI", "THR1" e "THR2".
       if (auxNAsup[1] == 0 & auxNAinf[1] == 0) {
@@ -403,8 +403,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                   if (PEAKI > THR1) {
                         lastIndex.originalSpeak <- index.originalSpeaks[length(index.originalSpeaks)]
                         lastRR.originalInterval <- index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak
-                        #As condições abaixo servem para indicar falsos positivos, ou seja,
-                        #---se um pico detectado como R é, na verdade, um pico T.
+                        #As condições abaixo servem para indicar falsos positivos, ou 
+                        #---seja, se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
                               if (lastRR.originalInterval > 0.2*Fs) {
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]

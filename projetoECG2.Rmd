@@ -262,7 +262,7 @@ x_norm <- as.data.frame(x_norm)
 update.filtSignal(Ecg.signalSplit, x_norm)
 ```  
 
-Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150 ms - isso corresponde a `r 0.15*fs` amostras. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
+Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150 ms - isso corresponde a `r 0.15*fs` amostras para os dados utilizados neste trabalho. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
 
 ```{r graph5}
 #Bloco 5 - Janela de integração móvel
@@ -389,11 +389,260 @@ THR <- function(SPKI, NPKI) {
 O parâmetro THR1 é o principal fator de classificação: se o valor do pico corrente for maior que THR1, ele é classificado como pico de sinal; caso contrário, como pico de ruido. Contudo, existem alguns picos de sinal não detectados, ou devido à irregularidade do sinal, ou devido a formas de ondas com mudanças abruptas de amplitude ou frequência. Ou seja, o método inclui algoritmo para eliminar _**falsos negativos**_.  
 
 Algoritmo para detecção e reintegração de _**falsos negativos**_ → se o intervalo entre os dois últimos picos R detectados for maior que 166 % da média das distâncias entre todos os demais pares de picos R adjacentes, então uma nova condição é testada para verificar a existência de picos R não detectados: ser simultaneamente menor que THR1 e maior que THR2.  
-Um novo problema surge quando a distância entre picos R é pequenos demais: a grande possibilidade de ser uma forma de onde T 
+Um novo problema surge quando a distância entre picos R é pequena demais: há grande possibilidade de o último pico R detectado ser, de fato, uma forma de onda T anômala. Em outras palavras, trata-se de um _**falso positivo**_.  
 
+Algoritmo para detecção e eliminação de _**falsos positivos**_ → se o último pico R detectado estiver a menos de 200 ms (ou `r 0.2*fs` amostras) do pico R anterior, então ele é, na verdade, uma onda T; se estiver a mais de 360 ms (ou `r 0.36*fs` amostras), então ele é realmente um pico R. O caso mais complexo é se eles estiveres entre 200 ms e 360 ms (ou `r 0.2*fs` e `r 0.36*fs` amostras), uma vez que pode ser tanto uma onda T anômala quanto um batimento ectópico. Neste caso, cabe ressaltar que o algoritmo é originalmente aplicado somente sobre o sinal derivativo _dt.signal_ (mesmo sabendo disso, também os aplicamos sobre o sinal pós-janela de integração _mwi.signal_): se a inclinação do sinal no último pico R detectado for menor que a metade da inclinação do sinal no pico R anterior, então se trata de uma forma de onda T anômala; caso contrário, é um complexo QRS verdadeiro.  
 
- 
+Abaixo temos os códigos que das funções que (1) inicializam as váriaveis a serem utilizadas pela função de classificação dos picos e (2) a própria função de classificação - incluidos os códigos para realizar o processamento de _**falsos positivos**_ e _**falsos negativos**_.  
+
+```{r}
+#A função "initializingVariables()" tem o objetivo de inicializar variáveis importantes 
+#---para construir as listas que armazenarão vários dados importantes do processamento:
+#---(1) "noise.peaks", os vetores dos picos classificados como picos de ruido;
+#---(2) "signal.peaks", os vetores dos picos classificados como picos R ou picos de sinal;
+#---(3) "index.Rpeak", os vetores dos indices dos picos definidos em "signal.peaks";
+#---(4) "RR.originalIntervals", os vetores das distâncias entre os picos definidos em 
+#-------"signal.peaks", segundo as localizações originais no sinal;
+#---(5) "num.falsePos", os números que indicam a quantidade de falsos positivos;
+#---(6) "num.falseNeg", os números que indicam a quantidade de falsos negativos;
+#---(7) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
+#---(8) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
+#---(9) "index" e "idx", são índices que auxiliam na iteração da função de classificação
+#-------"classifying.peaks()" e na função de atualização "df.updated()", respectivamente.
+initializingVariables <- function() {
+      RR.originalIntervals <<- list()
+      index.falsePos <<- list()
+      num.falsePos <<- list()
+      num.falseNeg <<- list()
+      signal.peaks <<- list()
+      noise.peaks <<- list()
+      index.Rpeak <<- list()
+      index <<- 1
+      df.UPDATED <<- list()
+      idx <<- 1
+}
+
+#A função "classifying.peaks()", devido a sua complexidade, terá comentários explicativos
+#---sobre seus blocos de funcionamento ao logo do seu código. Contudo, resumidamente, seu
+#---objetivo é gerar as listas "noise.peaks", "signal.peaks", "RR.originalIntervals", 
+#---"index.Rpeaks", "num.falsePos", "num.falseNeg" e "index.falsePos" inicializadas
+#---anteriormente pela função "initializingVariables()".
+#---Como argumentos, são utilizados:
+#---(1) "originalValues", a lista dos sinais cujos picos serão classificados;
+#---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
+#---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
+#---(4) "Fs", frequencia de amostragem dos sinais.
+classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
+      #A função "lst2vct()" simplesmente transforma uma lista de vetores em um único 
+      #---vetor, o que será necessário mais adiante.
+      lst2vct <- function(lst) {
+            vct <- vector()
+            for (k in 1:length(lst)) {
+                  vct <- c(vct,lst[[k]])
+            }
+            vct
+      }
+      #-----------------------------------------------------------------------------------
+      #O bloco abaixo identifica os dois primeiros picos R de "peakValues", de acordo com
+      #---as condições iniciais "initial.THR". Há, também, a necessidade de identificar 
+      #---os missing values ou NAs de "peakValues".  
+      aux <- j <- 0
+      auxNAsup <- auxNAinf <- 0
+      for (i in 1:length(peakValues)) {
+            if (!is.na(peakValues[i])){
+                  if (peakValues[i] > initial.THR) {
+                        if (aux < 1) {
+                              aux <- aux + 1
+                              if (aux == 1) {
+                                    j <- i
+                              }
+                        } else break
+                  }
+            } else {
+                  if (j == 0) {
+                        auxNAinf <- c(i,auxNAinf)
+                  } else {
+                        auxNAsup <- c(i,auxNAsup)
+                  }
+            }
+      }
+      #O bloco a seguir inicializa os vetores de classificação "noise.peaksAUX" e 
+      #---"signal.peaksAUX"; o vetor de índices dos picos R "index.Speaks", referente a 
+      #---"peakValues"; o vetor "RR.originalIntervalsAUX", que armazena a distância entre
+      #---amostras de "signal.peaksAUX"; os vetores "index.originalALLpeaks" e 
+      #---"index.originalSpeaks", que representam os índices, referentes ao sinal
+      #---original, de todos os picos e dos picos de sinal, respectivamente.
+      #---Além disso, os valores iniciais acima são utilizados para definir os primeiros
+      #---parâmetros de classificação - "SPKI", "NPKI", "THR1" e "THR2".
+      if (auxNAsup[1] == 0 & auxNAinf[1] == 0) {
+            noise.peaksAUX <- peakValues[1:i][-i][-j]
+      } else {
+            if (auxNAsup[1] != 0 & auxNAinf[1] != 0) {
+                  noise.peaksAUX <- peakValues[1:i][-i][-auxNAsup][-j][-auxNAinf]
+            } else {
+                  if (auxNAsup[1] == 0) {
+                        noise.peaksAUX <- peakValues[1:i][-i][-j][-auxNAinf]
+                  }
+                  if (auxNAinf[1] == 0) {
+                        noise.peaksAUX <- peakValues[1:i][-i][-auxNAsup][-j]
+                  }
+            }
+      }
+      signal.peaksAUX <- c(peakValues[j],peakValues[i])
+      index.Speaks <- c(j,i)
+      index.originalALLpeaks <- lst2vct(peakIndex)
+      index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
+      RR.originalIntervalsAUX <- diff(index.originalSpeaks)
+      SPKI <- PKI(signal.peaksAUX)
+      NPKI <- PKI(noise.peaksAUX)
+      THR(SPKI,NPKI)
+      #As variáveis abaixa são auxiliares para varredura do vetor de picos "peakValues" 
+      #---("index.RpeakAUX") e para obtenção de informações sobre falsos positivos e
+      #---negativos ("indexIn", "num.falsePosAUX" e "num.falseNegAUX).
+      indexIn <- 1
+      index.RpeakAUX <- i
+      num.falsePosAUX <- NULL
+      num.falseNegAUX <- NULL
+      #-----------------------------------------------------------------------------------
+      #O laço "for" abaixo varre todos os valores de picos que ainda serão classificados.
+      for (PEAKI in peakValues[(i+1):length(peakValues)]) {
+            index.RpeakAUX <- index.RpeakAUX + 1
+            if (!is.na(PEAKI)) {
+                  if (PEAKI > THR1) {
+                        lastIndex.originalSpeak <- index.originalSpeaks[length(index.originalSpeaks)]
+                        lastRR.originalInterval <- index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak
+                        #As condições abaixo servem para indicar falsos positivos, ou 
+                        #---seja, se um pico detectado como R é, na verdade, um pico T.
+                        if (lastRR.originalInterval < 0.36*Fs) {
+                              if (lastRR.originalInterval > 0.2*Fs) {
+                                    lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
+                                    beforeIndex <- lastIndex.originalSpeak
+                                    if (lastIndex < dim(originalValues)[1]){
+                                          lastSlope <- (originalValues$signal_mag[lastIndex+1]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                    } else {
+                                          lastSlope <- (originalValues$signal_mag[lastIndex]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                    }
+                                    beforeSlope <- (originalValues$signal_mag[beforeIndex+1]-originalValues$signal_mag[beforeIndex-1])*Fs/2
+                                    if (abs(lastSlope) < (abs(beforeSlope)/2)) {
+                                          if (length(index.falsePos) < index) {
+                                                index.falsePos[[index]] <<- list()
+                                          }
+                                          index.falsePos[[index]][[indexIn]] <<- lastIndex
+                                          indexIn <- indexIn + 1
+                                          if (is.null(num.falsePosAUX)) {
+                                                num.falsePosAUX <- 0
+                                          }
+                                          num.falsePosAUX <- num.falsePosAUX + 1
+                                          noise.peaksAUX <- c(noise.peaksAUX,PEAKI)
+                                          NPKI <- PKI(noise.peaksAUX)
+                                          THR(SPKI, NPKI)
+                                          next
+                                    }
+                              } else {
+                                    if (length(index.falsePos) < index) {
+                                          index.falsePos[[index]] <<- list()
+                                    }
+                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <- lastIndex.originalSpeak
+                                    indexIn <- indexIn + 1
+                                    if (is.null(num.falsePosAUX)) {
+                                          num.falsePosAUX <- 0
+                                    }
+                                    num.falsePosAUX <- num.falsePosAUX + 1
+                                    noise.peaksAUX <- c(noise.peaksAUX,PEAKI)
+                                    NPKI <- PKI(noise.peaksAUX)
+                                    THR(SPKI, NPKI)
+                                    next
+                              }
+                        }
+                        #As condições abaixo tratam de testar a existência de falsos 
+                        #---negativos, ou seja, se entre o último pico R classificado e o 
+                        #---suposto atual existe outro pico R não detectado. 
+                        lastIndex.Speak <- index.Speaks[length(index.Speaks)]
+                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)) {
+                              peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
+                              peakValuesAUX2 <- peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2]
+                              new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
+                              if (!is.infinite(new.Rpeak)) {
+                                    if (is.null(num.falseNegAUX)) {
+                                          num.falseNegAUX <- 0
+                                    }
+                                    num.falseNegAUX <- num.falseNegAUX + 1
+                                    indexRm.Npeak1 <- (1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak]
+                                    indexRm.Npeak2 <- (1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)]
+                                    signal.peaksAUX <- c(signal.peaksAUX,
+                                                         new.Rpeak,PEAKI)
+                                    noise.peaksAUX <- c(noise.peaksAUX[1:(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)]))],
+                                                        noise.peaksAUX[(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1])
+                                    index.Speaks <- c(index.Speaks,lastIndex.Speak + indexRm.Npeak2,
+                                                      index.RpeakAUX)
+                              } else {
+                                    signal.peaksAUX <- c(signal.peaksAUX, PEAKI)
+                                    index.Speaks <- c(index.Speaks, index.RpeakAUX)
+                              }
+                        } else {
+                              signal.peaksAUX <- c(signal.peaksAUX, PEAKI)
+                              index.Speaks <- c(index.Speaks, index.RpeakAUX)
+                        }
+                        index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
+                        RR.originalIntervalsAUX <- diff(index.originalSpeaks)
+                        SPKI <- PKI(signal.peaksAUX)
+                  } else {
+                        noise.peaksAUX <- c(noise.peaksAUX,PEAKI)
+                        NPKI <- PKI(noise.peaksAUX)
+                  }
+                  THR(SPKI, NPKI)
+            }
+      }
+      #-----------------------------------------------------------------------------------
+      #No último bloco, os vetores gerados pelo processamento são armazenados nas listas 
+      #---"RR.originalIntervals", "noise.peaks", "signal.peaks", "index.Rpeaks",
+      #---"num.falsePos", "num.falseNeg" e "index.falsePos".
+      if (!is.null(num.falsePosAUX)) {
+            num.falsePos[[index]] <<- num.falsePosAUX
+      }
+      if (!is.null(num.falseNegAUX)) {
+            num.falseNeg[[index]] <<- num.falseNegAUX
+      }
+      index.Rpeak[[index]] <<- index.originalSpeaks
+      noise.peaks[[index]] <<- noise.peaksAUX
+      signal.peaks[[index]] <<- signal.peaksAUX
+      RR.originalIntervals[[index]] <<- RR.originalIntervalsAUX
+      index <<- index + 1
+}
+```
+
+Em seguida, os códigos que executam as funções anteriormente apresentadas.
+
+```{r graph6}
+initializingVariables()
+
+mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
+
+dt.signalRRinterval <- RR.originalIntervals
+dt.signalFalsePos <- num.falsePos
+dt.signalFalseNeg <- num.falseNeg
+dt.signalSPeaks <- signal.peaks
+dt.signalNPeaks <- noise.peaks
+dt.signalIndexSpeaks <- index.Rpeak
+
+#A função "df.updated()" atualiza o sinal "signal.df" com imformações sobre a localização 
+#---("index.Rpeak") e a magnitude ("signal.peaks") dos picos desse sinal.
+df.updated <- function(signal.df, signal.peaks, index.Rpeak) {
+      signal_Rpeaks <- signal_Npeaks <- rep(NA,length(signal.df$signal_mag))
+      signal_Rpeaks[index.Rpeak] <- signal.peaks
+      df.UPDATED[[idx]] <<- signal.df
+      df.UPDATED[[idx]]$signal_Rpeaks <<- signal_Rpeaks
+      idx <<- idx + 1
+}
+
+mapply(df.updated, dt.signal, dt.signalSPeaks, dt.signalIndexSpeaks)
+
+dt.signalUPD <- df.UPDATED
+
+dataECGplot(dt.signalUPD, 25:35)
+```
+
+O mesmo procedimento que terminamos de aplicar sobre _dt.signal_, também precisamos aplicar sobre _mwi.signal_ para concluir a última parte da fase de decisão do algoritmos de Pan & Tompkins.
 ***
-Os parâmetros de classificação variam de acordo com o ruído que é detectado pelo algoritmo, atualizando automaticamente suas diretrizes a cada nova classificação feita, demonstrando que o algoritmo possui alta adaptabilidade ao se ajustar às características específicas do sinal.  
 
 **Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**
