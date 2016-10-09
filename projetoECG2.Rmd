@@ -1,7 +1,7 @@
 ---
-title: "Aplicação de algoritmo para detecção de complexos QRS em base de dados pública"
-author: "José Roberto Sobrinho Lima & Luana Gonçalves"
-date: "2 de outubro de 2016"
+title: "Algoritmo de Pan & Tompkins para detecção de complexos QRS"
+author: "José Roberto Sobrinho Lima e Luana Gonçalves"
+date: "8 de outubro de 2016"
 output: pdf_document
 ---
 ***
@@ -11,7 +11,7 @@ output: pdf_document
 ##1. Introdução e Metodologia  
 
 ```{r setoptions}
-knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, results = "hide")
+knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "hide")
 ```
 Doenças cardíacas estão entre as principais causas de mortalidade no mundo. Por esse motivo, há constante preocupação em melhorar o poder diagnóstico de equipamentos que monitoram a condição cardíaca. Uma grande variedade de dispositivos analisa a atividade cardíaca, produzindo informações que facilmente podem ser digitalizadas e processadas por computador. A medida que o poder computacional dessas máquinas cresce, os diagnósticos resultantes apresentam acurácia e precisão maiores.  
 
@@ -36,18 +36,245 @@ O algoritmo de Pan-Thompkins é baseado em filtros digitais, possuindo filtros p
 ***
 ##2. O código fonte  
 
-O código fonte desenvolvido neste trabalho pode ser dividido em três momentos:  
-
-Fase de estabelecimento → consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_, _lattice_ e _gridExtra_, além do pacote com funções de filtros digitais _signal_, com funções diretamente importadas do MatLab e Octave; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados de cada etapa de processamento dos sinais.  
-
-Fase de pré-processamento → primeiro momento do algoritmo de _Pan & Thompkins_, ela consiste em preparar os sinais para a posterior detecção QRS na fase de decisão, eliminando características indesejadas dos sinais com filtros passa-baixa e passa-alta e realçando características relevantes para tornar mais eficiente a detecção dos complexos QRS.  
-
-Fase de decisão → segundo momento do algoritmo de _Pan & Thompkins_, ela consiste em (1) definir os vetores de picos dos sinais e os parâmetros iniciais de classificação de picos; (2) varrer os valores do vetor de picos, classificando e atualizando os parâmetros de classificação a cada novo valor definido como pico de ruído ou de sinal; (3) utilizar as informações obtidas durante o processo de classificação para eliminar falsos positivos e reintegrar falsos negativos.
+O código fonte desenvolvido neste trabalho pode ser dividido em três momentos.  
 
 ###2.1 Fase de estabelecimento  
 
+Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_, _lattice_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
+
+```{r}
+#Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
+.libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
+library(signal)
+library(ggplot2)
+library(lattice)
+library(gridExtra)
+
+#Baixar os arquivos "mitdb_ecgSignals.csv" e "fs.csv" - caso ainda não tenham sido.
+Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv",
+         "https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
+Local <- c("mitdb_ecgSignals.csv","fs.csv")
+
+download <- function(Local, Url) {
+      if (!file.exists(Local)) {
+            download.file(Url, Local)
+      }
+}
+
+mapply(download, Local, Url)
+
+#Salvar em formatos adequados as variáveis que representam os sinais.
+Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
+Ecg.signals <- Ecg.signals[-((6*21601+1):dim(Ecg.signals)[1]),]
+Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
+fs <- read.csv("fs.csv")
+fs <- as.numeric(fs)
+```
+  
+```{r results = "markup"}
+#São obtidos a média "Mean1" e o desvio padrão "Std1" dos sinais não filtrados.
+Mean1 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
+Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
+Mean1
+Std1
+```
+  
+```{r}
+#A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
+#---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
+#---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
+filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
+      x <- lapply(data_ecgSplit, function(x) x$signal_mag - mean(x$signal_mag))
+      x <- sapply(x, filter, filt = H_Num, a = H_Den)
+      x <- as.data.frame(x)
+      x_norm <- sapply(x, function(x) {
+            x <- x/max(abs(x))
+      })
+      x_norm <<- as.data.frame(x_norm)
+}
+
+filter_ecgSignals(Ecg.signalSplit, 1, 1)
+
+#A função "update.filtSignal()" pretende atualizar a lista de sinais "Ecg.signalSplit" pela
+#---lista de valores filtrados e normalizados "x_norm".
+update.filtSignal <- function(Ecg.signalSplit, x_norm) {
+      for (i in 1:length(Ecg.signalSplit)) {
+            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
+      }
+}
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+```
+  
+```{r results = "markup"}
+#São obtidos a média "Mean2" e o desvio padrão "Std2" dos sinais normalizados.
+Mean2 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
+Std2 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
+Mean2
+Std2
+```
+  
+```{r graph1}
+#A função "dataECGplot()" é a principal função de plotagem do código, responsável por 
+#---mostrar a evolução do sinal em cada etapa de processamento.
+#---Seus argumentos são:
+#---(1) "Ecg.signalSplit" - define a lista de sinais a serem plotados;
+#---(2) "interval_seg" - define o intervalo de tempo em que o plote está delimitado;
+#---(3) "Fs" - define a frequência de amostragem dos sinais.
+dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
+      Ecg.signalsAUX <- data.frame()
+      signal_mag <- vector()
+      interval <- 1+((Fs*min(interval_seg)):(Fs*max(interval_seg)))
+      for (i in 1:length(Ecg.signalSplit)) {
+            signal_mag <- c(signal_mag,
+                            Ecg.signalSplit[[i]]$signal_mag[interval])
+            Ecg.signalSplit[[i]] <- Ecg.signalSplit[[i]][interval,]
+            Ecg.signalsAUX <- rbind(Ecg.signalsAUX,Ecg.signalSplit[[i]])
+      }
+      Ecg.signalsAUX$signal_mag <- signal_mag
+      
+      panel.smoother <- function(x, y) {
+            panel.grid(h=-1, v=-1)
+            panel.xyplot(x, y, type = "l", lwd = 1)
+            panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
+      }
+      
+      xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
+             layout=c(3,2),
+             panel=panel.smoother,
+             main="Ecg Signals", xlab="time (s)",ylab="Volts")
+}
+
+dataECGplot(Ecg.signalSplit, 25:35)
+```
+  
 ###2.2 Algoritmo de _Pan & Thompkins_  
+
+O método que Pan & Tompkins desenvolveram para realizar a detecção dos complexos QRS de sinais de ECG é capaz de realizar a tarefa em tempo. Para tanto, o algoritmo é baseado na inclinação, amplitude e tamanho do sinal - não se limita, pois, somente à inclinação da onda R do sinal.  
+Esse algoritmo é divido em dois estágios, pré-processamento e decisão.  
+O estágio de pré-processamento consiste em preparar os sinais para a posterior detecção, eliminando os ruidos dos sinais mediante filtros e realçando a inclinação QRS para tornar mais eficiente sua detecção.  
+O estágio de decisão consiste em obter e atualizar constantemente parâmetros de classificação para determinar se os picos detectados são oriundos de ruidos ou se são próprios do sinal. As informações obtidas durante essa etapa são utilizadas principalmente para eliminar falsos positivos e reintegrar falsos negativos.
 
 ####2.2.1 Fase de pré-processamento  
 
+Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influências da onda T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata para construir um passa-banda de 3dB de atenuação e frequências de 9 a 20 Hz[ref. ALVAREZ]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).
+Em seguida, um operador derivada é aplicado para filtrar a saída, fornecendo informações da inclinação complexas. Então, o sinal é elevado ao quadrado ponto a ponto, o que intensifica a inclinação do sinal derivado e ajuda a reduzir falsos positivos causados por de ondas T maiores que as usuais.
+Finalmente, uma janela de integração móvel é aplicada, o que agraga informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importe, uma vez que deve sempre conter o complexo QRS que pode ser de diferentes extensões e, entretanto, não deve misturado com outras ondas como a onda T. O melhor resultado foi obtido usando uma janela de 150ms, além disso os filtros passa-banda e as operações derivativas causam um delay que devem ser considerados quando comparados ao sinal de referência.
+
+```{r graph2, fig.height = 4, fig.width = 4, fig.align = "center"}
+#Bloco 1 - Filtro passa-baixa.
+N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
+D_lp <- 32*c(1,-2,1)
+
+H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz.
+
+filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+
+#A função "fz_plot()" pretende gerar gráficos das respostas frequenciais dos filtros: 
+#---magnitude (dB e linear) e fase em função da frequência normalizada.
+#---Seus argumentos são: 
+#---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
+#---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
+#---(3) "Fs" - define a frequência de amostragem do filtro.
+fz_plot <- function(filter_freqz, filter_type, Fs = fs){
+      df <- data.frame(w = rep(0,length(filter_freqz$f)),
+                       mag = rep(0,length(filter_freqz$h)),
+                       mag_dB = rep(0,length(filter_freqz$h)),
+                       phase_degrees = rep(0,length(filter_freqz$h)))
+      df$w <- filter_freqz$f/(Fs/2)
+      df$mag <- abs(filter_freqz$h)
+      df$mag_dB <- 20*log10(abs(filter_freqz$h))
+      df$phase_degrees <- (180/pi)*Arg(filter_freqz$h)
+      
+      vec_aux <- df$mag_dB
+      vec_aux <- vec_aux[-1]
+      vec_aux <- vec_aux + 3
+      vec_aux <- vec_aux^2
+      wc_sample <- numeric()
+      for (i in 1:(dim(df)[1]/2)) {
+            if (df$mag_dB[-1][i] == df$mag_dB[-1][vec_aux == min(vec_aux, na.rm = TRUE)]) {
+                  wc_sample <- i + 1
+            }
+      }
+      
+      interval <- wc_sample:512 #default case: low pass filter "lp"
+      type <- "Low"
+      if (filter_type == "hp"){
+            interval <- 1:wc_sample
+            type <- "High"
+      }
+      
+      p1 <- ggplot(data=df, aes(x=w, y=mag)) +
+            geom_line(color = "navy", size = 1) +
+            geom_line(data = df[interval,], color = "red", size = 1.3) +
+            labs(x="",y="Magnitude")
+      p2 <- ggplot(data=df, aes(x=w, y=mag_dB)) +
+            geom_line(color = "navy", size = 1) +
+            geom_line(data = df[interval,], color = "red", size = 1.3) +
+            labs(x="",y="Magnitude (dB)")
+      p3 <- ggplot(data=df, aes(x=w, y=phase_degrees)) +
+            geom_line(color = "navy", size = 1) +
+            labs(x="",y="Phase (degrees)")
+      
+      labs_title <- labs(title=paste(type,"Pass Filter - Frequency Response"))
+      labs_x <- labs(x=expression(paste("Normalized Frequency (x ",pi," rad/sample)")))
+      
+      grid.arrange(p1 + labs_title, p2, p3 + labs_x, nrow=3)
+}
+
+fz_plot(H_lpz, "lp")
+```
+  
+```{r graph3, fig.height = 4, fig.width = 4, fig.align = "center"}
+#Bloco 2 - Filtro passa-alta.
+N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
+D_hp <- 32*c(1,-1)
+
+H_hpz <- freqz(N_hp, D_hp, Fs = fs) #Fs = 360 Hz admite Fc = 9 Hz
+
+filter_ecgSignals(Ecg.signalSplit, N_hp, D_hp)
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+
+fz_plot(H_hpz, "hp")
+```
+  
+```{r graph4}
+#Bloco 3 - Operador derivativo.
+N_do <- c(2,1,0,-1,-2)
+D_do <- 8
+
+filter_ecgSignals(Ecg.signalSplit, N_do, D_do)
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+
+dt.signal <- Ecg.signalSplit
+
+dataECGplot(dt.signal, 25:35)
+```
+  
+```{r graph5}
+#Bloco 4 - Operador que eleva os valores dos sinais ao quadrado.
+x_norm <- lapply(x_norm, function(x) x - mean(x))
+x_norm <- sapply(x_norm, function(x) x^2)
+x_norm <- as.data.frame(x_norm)
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+
+#Bloco 5 - Janela de integração móvel
+N_if <- rep(1,54)
+D_if <- 54
+
+filter_ecgSignals(Ecg.signalSplit, N_if, D_if)
+
+update.filtSignal(Ecg.signalSplit, x_norm)
+
+mwi.signal <- Ecg.signalSplit
+
+dataECGplot(mwi.signal, 25:35)
+```
 ####2.2.2 Fase de decisão  
+
+Esta fase consiste em (1) definir os vetores de picos dos sinais e os parâmetros iniciais de classificação de picos; (2) varrer os valores do vetor de picos, classificando e atualizando os parâmetros de classificação a cada novo valor definido como pico de ruído ou de sinal; (3) utilizar as informações obtidas durante o processo de classificação para eliminar falsos positivos e reintegrar falsos negativos.

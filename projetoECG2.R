@@ -27,6 +27,7 @@ mapply(download, Local, Url)
 
 #Salvar em formatos adequados as variáveis que representam os sinais.
 Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
+Ecg.signals <- Ecg.signals[-((6*21601+1):dim(Ecg.signals)[1]),]
 Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
 fs <- read.csv("fs.csv")
 fs <- as.numeric(fs)
@@ -38,8 +39,9 @@ Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
 #A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o filtro
 #---definido por uma função de transferência com numerador "H_Num" e denominador "H_Den".
 #---Além disso, o sinal filtrado resultante "x_norm" está normalizado.
-filter_ecgSignals <- function(data_ecg, H_Num, H_Den) {
-      x <- sapply(data_ecg, filter, filt = H_Num, a = H_Den)
+filter_ecgSignals <- function(data_ecgSplit, H_Num, H_Den) {
+      x <- lapply(data_ecgSplit, function(x) x$signal_mag - mean(x$signal_mag))
+      x <- sapply(x, filter, filt = H_Num, a = H_Den)
       x <- as.data.frame(x)
       x_norm <- sapply(x, function(x) {
             x <- x/max(abs(x))
@@ -57,7 +59,7 @@ update.filtSignal <- function(Ecg.signalSplit, x_norm) {
       }
 }
 
-update.filtSignal(Ecg.signalsSplit, x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 #São obtidos a média "Mean2" e o desvio padrão "Std2" dos sinais normalizados.
 Mean2 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
@@ -88,7 +90,7 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
       }
       
       xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
-             layout=c(4,2),
+             layout=c(3,2),
              panel=panel.smoother,
              main="Ecg Signals", xlab="time (s)",ylab="Volts")
 }
@@ -162,7 +164,7 @@ fz_plot(H_lpz, "lp")
 
 filter_ecgSignals(Ecg.signalSplit, N_lp, D_lp)
 
-update.filtSignal(Ecg.signalsSplit, x_norm)
+update.filtSignal(Ecg.signalSplit, x_norm)
 
 dataECGplot(Ecg.signalSplit, 25:35)
 
@@ -174,7 +176,7 @@ H_hpz <- freqz(N_hp, D_hp, Fs = fs) #Fs = 360 Hz admite Fc = 9 Hz
 
 fz_plot(H_hpz, "hp")
 
-filter_ecgSignals(x_norm, N_hp, D_hp)
+filter_ecgSignals(Ecg.signalSplit, N_hp, D_hp)
 
 update.filtSignal(Ecg.signalSplit, x_norm)
 
@@ -184,7 +186,7 @@ dataECGplot(Ecg.signalSplit, 25:35)
 N_do <- c(2,1,0,-1,-2)
 D_do <- 8
 
-filter_ecgSignals(x_norm, N_do, D_do)
+filter_ecgSignals(Ecg.signalSplit, N_do, D_do)
 
 update.filtSignal(Ecg.signalSplit, x_norm)
 
@@ -193,10 +195,9 @@ dt.signal <- Ecg.signalSplit
 dataECGplot(dt.signal, 25:35)
 
 #Bloco 4 - Operador que eleva os valores dos sinais ao quadrado.
+x_norm <- lapply(x_norm, function(x) x - mean(x))
 x_norm <- sapply(x_norm, function(x) x^2)
 x_norm <- as.data.frame(x_norm)
-
-filter_ecgSignals(x_norm, 1, 1)
 
 update.filtSignal(Ecg.signalSplit, x_norm)
 
@@ -206,7 +207,7 @@ dataECGplot(Ecg.signalSplit, 25:35)
 N_if <- rep(1,54)
 D_if <- 54
 
-filter_ecgSignals(x_norm, N_if, D_if)
+filter_ecgSignals(Ecg.signalSplit, N_if, D_if)
 
 update.filtSignal(Ecg.signalSplit, x_norm)
 
@@ -226,10 +227,10 @@ dataECGplot(mwi.signal, 25:35)
 #---sinais.
 #---O objetivo desta função é obter duas listas: 
 #---(1) "peakValues", que armazena os vetores de picos de cada sinal;
-#---(2) "peakIndez", que armazena os vetores de índices de cada pico em "peakValues".
+#---(2) "peakIndex", que armazena os vetores de índices de cada pico.
 peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
-      peakValues <- data.frame()
-      peakIndex <- list()
+      peak.values <- data.frame()
+      peak.index <- list()
       k <- 0:(Fs*60/samples)*samples
       for (i in 1:(Fs*60/samples)) {
             if (i == Fs*60/samples) {
@@ -276,9 +277,10 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
 #---(4) "RR.originalIntervals", os vetores das distâncias entre os picos definidos em 
 #-------"signal.peaks", segundo as localizações originais no sinal;
 #---(5) "num.falsePos", os números que indicam a quantidade de falsos positivos;
-#---(6) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
-#---(7) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
-#---(8) "index" e "idx", são índices que auxiliam na iteração da função de classificação
+#---(6) "num.falseNeg", os números que indicam a quantidade de falsos negativos;
+#---(7) "index.falsePos", os vetores que indicam os indices de cada falso positivo;
+#---(8) "df.UPDATED", os sinais atualizados com parte das informações das listas acima;
+#---(9) "index" e "idx", são índices que auxiliam na iteração da função de classificação
 #-------"classifying.peaks()" e na função de atualização "df.updated()", respectivamente.
 initializingVariables <- function() {
       RR.originalIntervals <<- list()
@@ -307,7 +309,7 @@ PKI <- function(vector.peaks) {
 
 #A função "THR()" utiliza os parâmetros NPKI e SPKI, obtidos com a função "PKI()", para
 #---gerar os parâmetros de classificação dos picos dos sinais.
-THR <- function(SPKI,NPKI) {
+THR <- function(SPKI, NPKI) {
       THR1 <<- NPKI + 0.25*(SPKI - NPKI)
       THR2 <<- 0.5*THR1
 }
@@ -330,7 +332,7 @@ lst2vct <- function(lst) {
 #---(1) "originalValues", a lista dos sinais cujos picos serão classificados;
 #---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
 #---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
-#---(4) "Fs", frequencia de amostragem dos sinais.   
+#---(4) "Fs", frequencia de amostragem dos sinais.
 classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
       #-----------------------------------------------------------------------------------
       #O bloco abaixo identifica os dois primeiros picos R de "peakValues", de acordo com
@@ -380,7 +382,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       }
       signal.peaksAUX <- c(peakValues[j],peakValues[i])
       index.Speaks <- c(j,i)
-      index.originalALLpeaks <- transf(peakIndex)
+      index.originalALLpeaks <- lst2vct(peakIndex)
       index.originalSpeaks <- index.originalALLpeaks[index.Speaks]
       RR.originalIntervalsAUX <- diff(index.originalSpeaks)
       SPKI <- PKI(signal.peaksAUX)
@@ -415,7 +417,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     beforeSlope <- (originalValues$signal_mag[beforeIndex+1]-originalValues$signal_mag[beforeIndex-1])*Fs/2
                                     if (abs(lastSlope) < (abs(beforeSlope)/2)) {
                                           if (length(index.falsePos) < index) {
-                                                index.fasePos[[index]] <<- list()
+                                                index.falsePos[[index]] <<- list()
                                           }
                                           index.falsePos[[index]][[indexIn]] <<- lastIndex
                                           indexIn <- indexIn + 1
@@ -448,7 +450,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         #---negativos, ou seja, se entre o último pico R classificado e o 
                         #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
-                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervals)) {
+                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)) {
                               peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
                               peakValuesAUX2 <- peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2]
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
@@ -463,7 +465,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                                          new.Rpeak,PEAKI)
                                     noise.peaksAUX <- c(noise.peaksAUX[1:(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)]))],
                                                         noise.peaksAUX[(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1])
-                                    index.Speaks <- c(index.Speaks,lastIndex.Speak + indexRm.Npeak2,index.RpeakAUX)
+                                    index.Speaks <- c(index.Speaks,lastIndex.Speak + indexRm.Npeak2,
+                                                      index.RpeakAUX)
                               } else {
                                     signal.peaksAUX <- c(signal.peaksAUX, PEAKI)
                                     index.Speaks <- c(index.Speaks, index.RpeakAUX)
@@ -500,7 +503,7 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 }
 
 #-----------------------------------------------------------------------------------------
-#Etapa de decisão [PARTE 2].
+#Fase de decisão [PARTE 2].
 
 #No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
 #---listas de sinais atualizados com dados obtidos com a função "classifying.peaks()", (3)
@@ -566,5 +569,3 @@ mapply(df.updated, mwi.signal, mwi.signalSPeaks, mwi.signalIndexSpeaks)
 mwi.signalUPD <- df.UPDATED
 
 dataECGplot(mwi.signalUPD, 25:35)
-
-#
