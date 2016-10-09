@@ -10,9 +10,6 @@ output: pdf_document
 
 ##1. Introdução e Metodologia  
 
-```{r setoptions}
-knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "hide")
-```
 Doenças cardíacas estão entre as principais causas de mortalidade no mundo. Por esse motivo, há constante preocupação em melhorar o poder diagnóstico de equipamentos que monitoram a condição cardíaca. Uma grande variedade de dispositivos analisa a atividade cardíaca, produzindo informações que facilmente podem ser digitalizadas e processadas por computador. A medida que o poder computacional dessas máquinas cresce, os diagnósticos resultantes apresentam acurácia e precisão maiores.  
 
 Em processamento de eletrocardiogramas (ECG), uma base importante para fundamentar posteriores análises dos dados é a acurácia na detecção de batimentos cardíacos. Nesse sentido, como a energia dos batimentos está localizada nos complexos QRS[nota 1], acurácia na detecção desses complexos é essencial para a análise de ECG.  
@@ -42,6 +39,10 @@ O código fonte desenvolvido neste trabalho pode ser dividido em três momentos.
 
 Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_, _lattice_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
 
+```{r setoptions}
+knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "hide")
+```
+
 ```{r}
 #Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
@@ -51,8 +52,8 @@ library(lattice)
 library(gridExtra)
 
 #Baixar os arquivos "mitdb_ecgSignals.csv" e "fs.csv" - caso ainda não tenham sido.
-Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv",
-         "https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
+Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv"
+         ,"https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
 Local <- c("mitdb_ecgSignals.csv","fs.csv")
 
 download <- function(Local, Url) {
@@ -133,16 +134,27 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
       }
       Ecg.signalsAUX$signal_mag <- signal_mag
       
-      panel.smoother <- function(x, y) {
-            panel.grid(h=-1, v=-1)
-            panel.xyplot(x, y, type = "l", lwd = 1)
-            panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
-      }
+      #panel.smoother <- function(x, y) {
+      #      panel.grid(h=-1, v=-1)
+      #      panel.xyplot(x, y, type = "l", lwd = 1)
+      #      panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
+      #}
       
-      xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
-             layout=c(3,2),
-             panel=panel.smoother,
-             main="Ecg Signals", xlab="time (s)",ylab="Volts")
+      #xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
+      #       layout=c(3,2),
+      #       panel=panel.smoother,
+      #       main="Ecg Signals", xlab="time (s)",ylab="Volts")
+      
+      p1 <- ggplot(Ecg.signalsAUX, aes(x = t, y = signal_mag, group = signal_case)) + 
+                  geom_line(color = "blue3") + 
+                  facet_wrap( ~ signal_case, nrow = 3) + 
+                  labs(title = "Sinais ECG", x = "tempo (s)", y = "magnitude (Volts)")
+      
+      if (is.null(Ecg.signalsAUX$signal_Rpeaks)) {
+            p1
+      } else {
+            p1 + geom_point(mapping = aes(y = signal_Rpeaks), color = "darkolivegreen3")
+      }
 }
 
 dataECGplot(Ecg.signalSplit, 25:35)
@@ -159,7 +171,7 @@ O estágio de decisão consiste em (1) detectar os picos dos sinais, (2) obter e
 
 Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata, com o intuito de construir um passa-banda entre 9-20 Hz com 3 dB de atenuação [ref. RANGAYYAN]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).  
 
-```{r graph2, fig.height = 5, fig.width = 6, fig.align = "center"}
+```{r graph2, fig.height = 5, fig.width = 5, fig.align = "center"}
 #Bloco 1 - Filtro passa-baixa.
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
@@ -176,7 +188,7 @@ update.filtSignal(Ecg.signalSplit, x_norm)
 #---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
 #---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
 #---(3) "Fs" - define a frequência de amostragem do filtro.
-fz_plot <- function(filter_freqz, filter_type, Fs = fs){
+fz_plot <- function(filter_freqz, filter_type, Fs = fs) {
       df <- data.frame(w = rep(0,length(filter_freqz$f)),
                        mag = rep(0,length(filter_freqz$h)),
                        mag_dB = rep(0,length(filter_freqz$h)),
@@ -192,32 +204,32 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
       vec_aux <- vec_aux^2
       wc_sample <- numeric()
       for (i in 1:(dim(df)[1]/2)) {
-            if (df$mag_dB[-1][i] == df$mag_dB[-1][vec_aux == min(vec_aux, na.rm = TRUE)]) {
+            if (df$mag_dB[-1][i] == df$mag_dB[-1][vec_aux == min(vec_aux, na.rm = TRUE)]){
                   wc_sample <- i + 1
             }
       }
       
       interval <- wc_sample:512 #default case: low pass filter "lp"
-      type <- "Low"
+      type <- "baixa"
       if (filter_type == "hp"){
             interval <- 1:wc_sample
-            type <- "High"
+            type <- "alta"
       }
       
       p1 <- ggplot(data=df, aes(x=w, y=mag)) +
-            geom_line(color = "navy", size = 1) +
-            geom_line(data = df[interval,], color = "red", size = 1.3) +
-            labs(x="",y="Magnitude")
+                  geom_line(color = "blue3", size = 1) +
+                  geom_line(data = df[interval,], color = "red", size = 1.3) +
+                  labs(x="",y="Magnitude")
       p2 <- ggplot(data=df, aes(x=w, y=mag_dB)) +
-            geom_line(color = "navy", size = 1) +
-            geom_line(data = df[interval,], color = "red", size = 1.3) +
-            labs(x="",y="Magnitude (dB)")
+                  geom_line(color = "blue3", size = 1) +
+                  geom_line(data = df[interval,], color = "red", size = 1.3) +
+                  labs(x="",y="Magnitude (dB)")
       p3 <- ggplot(data=df, aes(x=w, y=phase_degrees)) +
-            geom_line(color = "navy", size = 1) +
-            labs(x="",y="Phase (degrees)")
+                  geom_line(color = "blue3", size = 1) +
+                  labs(x="",y="Fase (graus)")
       
-      labs_title <- labs(title=paste(type,"Pass Filter - Frequency Response"))
-      labs_x <- labs(x=expression(paste("Normalized Frequency (x ",pi," rad/sample)")))
+      labs_title <- labs(title=paste0("Filtro passa-",type," - Resposta em Frequência"))
+      labs_x <- labs(x=expression(paste("Frequência Normalizada (x ",pi," rad/amostra)")))
       
       grid.arrange(p1 + labs_title, p2, p3 + labs_x, nrow=3)
 }
@@ -225,7 +237,7 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
 fz_plot(H_lpz, "lp")
 ```
   
-```{r graph3, fig.height = 5, fig.width = 6, fig.align = "center"}
+```{r graph3, fig.height = 5, fig.width = 5, fig.align = "center"}
 #Bloco 2 - Filtro passa-alta.
 N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
 D_hp <- 32*c(1,-1)
@@ -376,7 +388,8 @@ PKI <- function(vector.peaks) {
       if (length(vector.peaks)==1) {
             PEAKI <- vector.peaks[1]
       } else {
-            PEAKI <- 0.125*vector.peaks[length(vector.peaks)] + 0.875*PKI(vector.peaks[-length(vector.peaks)])
+            PEAKI <- (0.125*vector.peaks[length(vector.peaks)]
+                      + 0.875*PKI(vector.peaks[-length(vector.peaks)]))
       }
       PEAKI
 }
@@ -650,32 +663,4 @@ Em seguida, os códigos que executam as funções anteriormente apresentadas.
 initializingVariables()
 
 mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
-
-dt.signalRRinterval <- RR.originalIntervals
-dt.signalFalsePos <- num.falsePos
-dt.signalFalseNeg <- num.falseNeg
-dt.signalSPeaks <- signal.peaks
-dt.signalNPeaks <- noise.peaks
-dt.signalIndexSpeaks <- index.Rpeak
-
-#A função "df.updated()" atualiza o sinal "signal.df" com imformações sobre a localização 
-#---("index.Rpeak") e a magnitude ("signal.peaks") dos picos desse sinal.
-df.updated <- function(signal.df, signal.peaks, index.Rpeak) {
-      signal_Rpeaks <- signal_Npeaks <- rep(NA,length(signal.df$signal_mag))
-      signal_Rpeaks[index.Rpeak] <- signal.peaks
-      df.UPDATED[[idx]] <<- signal.df
-      df.UPDATED[[idx]]$signal_Rpeaks <<- signal_Rpeaks
-      idx <<- idx + 1
-}
-
-mapply(df.updated, dt.signal, dt.signalSPeaks, dt.signalIndexSpeaks)
-
-dt.signalUPD <- df.UPDATED
-
-dataECGplot(dt.signalUPD, 25:35)
 ```
-
-O mesmo procedimento que terminamos de aplicar sobre _dt.signal_, também precisamos aplicar sobre _mwi.signal_ para concluir a última parte da fase de decisão do algoritmos de Pan & Tompkins.
-***
-
-**Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**

@@ -13,8 +13,8 @@ library(lattice)
 library(gridExtra)
 
 #Baixar os arquivos "mitdb_ecgSignals.csv" e "fs.csv" - caso ainda não tenham sido.
-Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv",
-         "https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
+Url <- c("https://raw.githubusercontent.com/JsRoberto/ECGData/master/mitdb_ecgSignals.csv"
+         ,"https://raw.githubusercontent.com/JsRoberto/ECGData/master/fs.csv")
 Local <- c("mitdb_ecgSignals.csv","fs.csv")
 
 download <- function(Local, Url) {
@@ -83,16 +83,27 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
       }
       Ecg.signalsAUX$signal_mag <- signal_mag
       
-      panel.smoother <- function(x, y) {
-            panel.grid(h=-1, v=-1)
-            panel.xyplot(x, y, type = "l", lwd = 1)
-            panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
-      }
+      #panel.smoother <- function(x, y) {
+      #      panel.grid(h=-1, v=-1)
+      #      panel.xyplot(x, y, type = "l", lwd = 1)
+      #      panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
+      #}
       
-      xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
-             layout=c(3,2),
-             panel=panel.smoother,
-             main="Ecg Signals", xlab="time (s)",ylab="Volts")
+      #xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
+      #       layout=c(3,2),
+      #       panel=panel.smoother,
+      #       main="Ecg Signals", xlab="time (s)",ylab="Volts")
+      
+      p1 <- ggplot(Ecg.signalsAUX, aes(x = t, y = signal_mag, group = signal_case)) + 
+                  geom_line(color = "blue3") + 
+                  facet_wrap( ~ signal_case, nrow = 3) + 
+                  labs(title = "Sinais ECG", x = "tempo (s)", y = "magnitude (Volts)")
+      
+      if (is.null(Ecg.signalsAUX$signal_Rpeaks)) {
+            p1
+      } else {
+            p1 + geom_point(mapping = aes(y = signal_Rpeaks), color = "darkolivegreen3")
+      }
 }
 
 dataECGplot(Ecg.signalSplit, 25:35)
@@ -114,7 +125,7 @@ H_lpz <- freqz(N_lp, D_lp, Fs = fs) #Fs = 360 Hz admite Fc = 20 Hz.
 #---(1) "filter_freqz" - define o filtro propriamente dito, mediante a classe "freqz";
 #---(2) "filter_type" - define se o filtro é passa-baixa "lp" ou passa-alta "hp";
 #---(3) "Fs" - define a frequência de amostragem do filtro.
-fz_plot <- function(filter_freqz, filter_type, Fs = fs){
+fz_plot <- function(filter_freqz, filter_type, Fs = fs) {
       df <- data.frame(w = rep(0,length(filter_freqz$f)),
                        mag = rep(0,length(filter_freqz$h)),
                        mag_dB = rep(0,length(filter_freqz$h)),
@@ -130,32 +141,32 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
       vec_aux <- vec_aux^2
       wc_sample <- numeric()
       for (i in 1:(dim(df)[1]/2)) {
-            if (df$mag_dB[-1][i] == df$mag_dB[-1][vec_aux == min(vec_aux, na.rm = TRUE)]) {
+            if (df$mag_dB[-1][i] == df$mag_dB[-1][vec_aux == min(vec_aux, na.rm = TRUE)]){
                   wc_sample <- i + 1
             }
       }
       
       interval <- wc_sample:512 #default case: low pass filter "lp"
-      type <- "Low"
+      type <- "baixa"
       if (filter_type == "hp"){
             interval <- 1:wc_sample
-            type <- "High"
+            type <- "alta"
       }
       
       p1 <- ggplot(data=df, aes(x=w, y=mag)) +
-            geom_line(color = "navy", size = 1) +
-            geom_line(data = df[interval,], color = "red", size = 1.3) +
-            labs(x="",y="Magnitude")
+                  geom_line(color = "blue3", size = 1) +
+                  geom_line(data = df[interval,], color = "red", size = 1.3) +
+                  labs(x="",y="Magnitude")
       p2 <- ggplot(data=df, aes(x=w, y=mag_dB)) +
-            geom_line(color = "navy", size = 1) +
-            geom_line(data = df[interval,], color = "red", size = 1.3) +
-            labs(x="",y="Magnitude (dB)")
+                  geom_line(color = "blue3", size = 1) +
+                  geom_line(data = df[interval,], color = "red", size = 1.3) +
+                  labs(x="",y="Magnitude (dB)")
       p3 <- ggplot(data=df, aes(x=w, y=phase_degrees)) +
-            geom_line(color = "navy", size = 1) +
-            labs(x="",y="Phase (degrees)")
+                  geom_line(color = "blue3", size = 1) +
+                  labs(x="",y="Fase (graus)")
       
-      labs_title <- labs(title=paste(type,"Pass Filter - Frequency Response"))
-      labs_x <- labs(x=expression(paste("Normalized Frequency (x ",pi," rad/sample)")))
+      labs_title <- labs(title=paste0("Filtro passa-",type," - Resposta em Frequência"))
+      labs_x <- labs(x=expression(paste("Frequência Normalizada (x ",pi," rad/amostra)")))
       
       grid.arrange(p1 + labs_title, p2, p3 + labs_x, nrow=3)
 }
@@ -305,7 +316,8 @@ PKI <- function(vector.peaks) {
       if (length(vector.peaks)==1) {
             PEAKI <- vector.peaks[1]
       } else {
-            PEAKI <- 0.125*vector.peaks[length(vector.peaks)] + 0.875*PKI(vector.peaks[-length(vector.peaks)])
+            PEAKI <- (0.125*vector.peaks[length(vector.peaks)]
+                      + 0.875*PKI(vector.peaks[-length(vector.peaks)]))
       }
       PEAKI
 }
