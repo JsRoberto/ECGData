@@ -159,7 +159,7 @@ O estágio de decisão consiste em (1) detectar os picos dos sinais, (2) obter e
 
 Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata, com o intuito de construir um passa-banda entre 9-20 Hz com 3 dB de atenuação [ref. RANGAYYAN]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).  
 
-```{r graph2, fig.height = 4, fig.width = 4, fig.align = "center"}
+```{r graph2, fig.height = 5, fig.width = 6, fig.align = "center"}
 #Bloco 1 - Filtro passa-baixa.
 N_lp <- c(1,rep(0,5),-2,rep(0,5),1)
 D_lp <- 32*c(1,-2,1)
@@ -225,7 +225,7 @@ fz_plot <- function(filter_freqz, filter_type, Fs = fs){
 fz_plot(H_lpz, "lp")
 ```
   
-```{r graph3, fig.height = 4, fig.width = 4, fig.align = "center"}
+```{r graph3, fig.height = 5, fig.width = 6, fig.align = "center"}
 #Bloco 2 - Filtro passa-alta.
 N_hp <- c(-1,rep(0,15),32,-32,rep(0,14),1)
 D_hp <- 32*c(1,-1)
@@ -313,10 +313,13 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
             }
             if (maximum > 1) {
                   for (aux in 1:length(updated.dataSplit)) {
-                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],length(peak.indexAUX[[aux]])),
-                                                   rep(NA, maximum - length(peak.indexAUX[[aux]])))
+                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],
+                                                       length(peak.indexAUX[[aux]])),
+                                                   rep(NA, maximum - length(peak.indexAUX
+                                                                            [[aux]])))
                         peak.indexAUX[[aux]] <- c(peak.indexAUX[[aux]],
-                                                  rep(NA,maximum - length(peak.indexAUX[[aux]])))
+                                                  rep(NA,maximum - length(peak.indexAUX
+                                                                          [[aux]])))
                   }
             }
             peak.valuesAUX <- as.data.frame(peak.valuesAUX)
@@ -509,8 +512,11 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
             index.RpeakAUX <- index.RpeakAUX + 1
             if (!is.na(PEAKI)) {
                   if (PEAKI > THR1) {
-                        lastIndex.originalSpeak <- index.originalSpeaks[length(index.originalSpeaks)]
-                        lastRR.originalInterval <- index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak
+                        lastIndex.originalSpeak <- (index.originalSpeaks
+                                                    [length(index.originalSpeaks)])
+                        lastRR.originalInterval <- (index.originalALLpeaks
+                                                    [[index.RpeakAUX]]
+                                                    - lastIndex.originalSpeak)
                         #As condições abaixo servem para indicar falsos positivos, ou 
                         #---seja, se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
@@ -518,11 +524,20 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
                                     beforeIndex <- lastIndex.originalSpeak
                                     if (lastIndex < dim(originalValues)[1]){
-                                          lastSlope <- (originalValues$signal_mag[lastIndex+1]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex+1] 
+                                                        - originalValues$signal_mag
+                                                        [lastIndex-1]) * Fs/2
                                     } else {
-                                          lastSlope <- (originalValues$signal_mag[lastIndex]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex] 
+                                                        - originalValues$signal_mag
+                                                        [lastIndex-1]) * Fs/2
                                     }
-                                    beforeSlope <- (originalValues$signal_mag[beforeIndex+1]-originalValues$signal_mag[beforeIndex-1])*Fs/2
+                                    beforeSlope <- (originalValues$signal_mag
+                                                    [beforeIndex+1]
+                                                    - originalValues$signal_mag
+                                                    [beforeIndex-1]) * Fs/2
                                     if (abs(lastSlope) < (abs(beforeSlope)/2)) {
                                           if (length(index.falsePos) < index) {
                                                 index.falsePos[[index]] <<- list()
@@ -542,7 +557,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     if (length(index.falsePos) < index) {
                                           index.falsePos[[index]] <<- list()
                                     }
-                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <- lastIndex.originalSpeak
+                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <-
+                                          lastIndex.originalSpeak
                                     indexIn <- indexIn + 1
                                     if (is.null(num.falsePosAUX)) {
                                           num.falsePosAUX <- 0
@@ -558,22 +574,39 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         #---negativos, ou seja, se entre o último pico R classificado e o 
                         #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
-                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)) {
-                              peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
-                              peakValuesAUX2 <- peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2]
+                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)){
+                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1)
+                                                           :(index.RpeakAUX-1)])
+                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1
+                                                               & peakValuesAUX > THR2])
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
                               if (!is.infinite(new.Rpeak)) {
                                     if (is.null(num.falseNegAUX)) {
                                           num.falseNegAUX <- 0
                                     }
                                     num.falseNegAUX <- num.falseNegAUX + 1
-                                    indexRm.Npeak1 <- (1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak]
-                                    indexRm.Npeak2 <- (1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)]
+                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX
+                                                                [!is.na(peakValuesAUX)]))
+                                                       [peakValuesAUX
+                                                       [!is.na(peakValuesAUX)]==new.Rpeak]
+                                                       )
+                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))
+                                                       [peakValuesAUX==new.Rpeak
+                                                       & !is.na(peakValuesAUX)])
                                     signal.peaksAUX <- c(signal.peaksAUX,
                                                          new.Rpeak,PEAKI)
-                                    noise.peaksAUX <- c(noise.peaksAUX[1:(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)]))],
-                                                        noise.peaksAUX[(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1])
-                                    index.Speaks <- c(index.Speaks,lastIndex.Speak + indexRm.Npeak2,
+                                    noise.peaksAUX <- c((noise.peaksAUX[1:(length(
+                                          noise.peaksAUX) - length(peakValuesAUX
+                                                                   [!is.na(peakValuesAUX)]
+                                                                   ))]),
+                                          (noise.peaksAUX[(length(noise.peaksAUX)
+                                                           - length(peakValuesAUX
+                                                                    [!is.na(peakValuesAUX)
+                                                                    ])+1):length(
+                                                                          noise.peaksAUX)]
+                                           [-indexRm.Npeak1]))
+                                    index.Speaks <- c(index.Speaks,
+                                                      lastIndex.Speak + indexRm.Npeak2,
                                                       index.RpeakAUX)
                               } else {
                                     signal.peaksAUX <- c(signal.peaksAUX, PEAKI)

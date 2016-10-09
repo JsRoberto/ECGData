@@ -249,10 +249,13 @@ peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
             }
             if (maximum > 1) {
                   for (aux in 1:length(updated.dataSplit)) {
-                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],length(peak.indexAUX[[aux]])),
-                                                   rep(NA, maximum - length(peak.indexAUX[[aux]])))
+                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],
+                                                       length(peak.indexAUX[[aux]])),
+                                                   rep(NA, maximum - length(peak.indexAUX
+                                                                            [[aux]])))
                         peak.indexAUX[[aux]] <- c(peak.indexAUX[[aux]],
-                                                  rep(NA,maximum - length(peak.indexAUX[[aux]])))
+                                                  rep(NA,maximum - length(peak.indexAUX
+                                                                          [[aux]])))
                   }
             }
             peak.valuesAUX <- as.data.frame(peak.valuesAUX)
@@ -401,8 +404,11 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
             index.RpeakAUX <- index.RpeakAUX + 1
             if (!is.na(PEAKI)) {
                   if (PEAKI > THR1) {
-                        lastIndex.originalSpeak <- index.originalSpeaks[length(index.originalSpeaks)]
-                        lastRR.originalInterval <- index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak
+                        lastIndex.originalSpeak <- (index.originalSpeaks
+                                                    [length(index.originalSpeaks)])
+                        lastRR.originalInterval <- (index.originalALLpeaks
+                                                    [[index.RpeakAUX]]
+                                                    - lastIndex.originalSpeak)
                         #As condições abaixo servem para indicar falsos positivos, ou 
                         #---seja, se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
@@ -410,11 +416,20 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
                                     beforeIndex <- lastIndex.originalSpeak
                                     if (lastIndex < dim(originalValues)[1]){
-                                          lastSlope <- (originalValues$signal_mag[lastIndex+1]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex+1] 
+                                                        - originalValues$signal_mag
+                                                        [lastIndex-1]) * Fs/2
                                     } else {
-                                          lastSlope <- (originalValues$signal_mag[lastIndex]-originalValues$signal_mag[lastIndex-1])*Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex] 
+                                                        - originalValues$signal_mag
+                                                        [lastIndex-1]) * Fs/2
                                     }
-                                    beforeSlope <- (originalValues$signal_mag[beforeIndex+1]-originalValues$signal_mag[beforeIndex-1])*Fs/2
+                                    beforeSlope <- (originalValues$signal_mag
+                                                    [beforeIndex+1]
+                                                    - originalValues$signal_mag
+                                                    [beforeIndex-1]) * Fs/2
                                     if (abs(lastSlope) < (abs(beforeSlope)/2)) {
                                           if (length(index.falsePos) < index) {
                                                 index.falsePos[[index]] <<- list()
@@ -434,7 +449,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     if (length(index.falsePos) < index) {
                                           index.falsePos[[index]] <<- list()
                                     }
-                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <- lastIndex.originalSpeak
+                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <-
+                                          lastIndex.originalSpeak
                                     indexIn <- indexIn + 1
                                     if (is.null(num.falsePosAUX)) {
                                           num.falsePosAUX <- 0
@@ -450,22 +466,39 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         #---negativos, ou seja, se entre o último pico R classificado e o 
                         #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
-                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)) {
-                              peakValuesAUX <- peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)]
-                              peakValuesAUX2 <- peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2]
+                        if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)){
+                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1)
+                                                           :(index.RpeakAUX-1)])
+                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1
+                                                               & peakValuesAUX > THR2])
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
                               if (!is.infinite(new.Rpeak)) {
                                     if (is.null(num.falseNegAUX)) {
                                           num.falseNegAUX <- 0
                                     }
                                     num.falseNegAUX <- num.falseNegAUX + 1
-                                    indexRm.Npeak1 <- (1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak]
-                                    indexRm.Npeak2 <- (1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)]
+                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX
+                                                                [!is.na(peakValuesAUX)]))
+                                                       [peakValuesAUX
+                                                       [!is.na(peakValuesAUX)]==new.Rpeak]
+                                                       )
+                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))
+                                                       [peakValuesAUX==new.Rpeak
+                                                       & !is.na(peakValuesAUX)])
                                     signal.peaksAUX <- c(signal.peaksAUX,
                                                          new.Rpeak,PEAKI)
-                                    noise.peaksAUX <- c(noise.peaksAUX[1:(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)]))],
-                                                        noise.peaksAUX[(length(noise.peaksAUX)-length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1])
-                                    index.Speaks <- c(index.Speaks,lastIndex.Speak + indexRm.Npeak2,
+                                    noise.peaksAUX <- c((noise.peaksAUX[1:(length(
+                                          noise.peaksAUX) - length(peakValuesAUX
+                                                                   [!is.na(peakValuesAUX)]
+                                                                   ))]),
+                                          (noise.peaksAUX[(length(noise.peaksAUX)
+                                                           - length(peakValuesAUX
+                                                                    [!is.na(peakValuesAUX)
+                                                                    ])+1):length(
+                                                                          noise.peaksAUX)]
+                                           [-indexRm.Npeak1]))
+                                    index.Speaks <- c(index.Speaks,
+                                                      lastIndex.Speak + indexRm.Npeak2,
                                                       index.RpeakAUX)
                               } else {
                                     signal.peaksAUX <- c(signal.peaksAUX, PEAKI)
@@ -505,10 +538,10 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 #-----------------------------------------------------------------------------------------
 #Fase de decisão [PARTE 2].
 
-#No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas as
-#---listas de sinais atualizados com dados obtidos com a função "classifying.peaks()", (3)
-#---plotados os gráficos resultades da atualização. Esses procedimentos serão aplicados 
-#---tanto à lista de sinais "dt.signal" quanto à lista "mwi.signal".
+#No segundo momento, são (1) aplicadas as funções definidas anteriormente, (2) definidas
+#---as listas de sinais atualizados com dados obtidos com a função "classifying.peaks()",
+#---(3) plotados os gráficos resultades da atualização. Esses procedimentos serão
+#---aplicados tanto à lista de sinais "dt.signal" quanto à lista "mwi.signal".
 
 #Aplicação sobre a lista "dt.signal".
 #A primeira aplicação da função "peakDetection()" é usada pra obter os parâmetros 
