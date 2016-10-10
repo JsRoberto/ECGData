@@ -696,7 +696,14 @@ mwi.signalUPD <- df.UPDATED
 dataECGplot(mwi.signalUPD, 25:35)
 ```
 
+A aplicação do algoritmo de decisão de _Pan & Tompkins_ sobre ambas as listas _dt.signal_ e _mwi.signal_ é importante para a último bloco de processamento do método: a comparação dos dados obtidos a partir das duas listas, começando por (1) considerar o _delay_ entre o sinal derivativo e o sinal pós-mwi (mwi = *moving window integration*), que corresponde à metade da janela, ou seja, `r D_if/2`; (2) estabelecer como teste para classificar uma detecção verdadeira a proximidade menor que 50 amostras entre as detecções análogas dos dois conjuntos de sinais.  
+
+Isso permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não executamos no nosso trabalho esta última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.  
+
+Então, os dados assim obtidos estão representados na tabela a seguir.  
+
+Caso | Média e dp | Média e dp após norm.
+-----|------------|----------------------
+100  |`r Mean1[1]`|`r Mean1[2]`
 
 ***
-
-**Nessa fase, dois conjuntos de parâmetros de classificação são aplicados: o primeiro se aplica ao sinal filtrado pelo bloco derivativo (doravante _dt.signal_) e o segundo, ao sinal filtrado pela janela de integração (doravante _mwi.signal_). Após essas aplicações, deve-se comparar os dois conjuntos de sinais resultantes, o que permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não procedemos no nosso trabalho com está última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.**
