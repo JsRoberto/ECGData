@@ -18,9 +18,9 @@ Devido à variação ao longo do tempo e aos diferentes tipos de ruído que pode
 
 Os algoritmos de detecção dos complexos QRS apresentam duas fases distintas: (1) o estágio de pré-processamento, que consiste em aplicar técnicas de filtragem linear e não linear ou “_smoothing_” – o objetivo é atenuar as ondas P e T, bem como os ruídos contaminantes; e (2) o estágio de decisão, que apresenta como tarefas mais importantes a determinação de “_thresholds_” para classificação e, em alguns casos, a discriminação de ondas T e a redução de falsos positivos.  
 
-O algoritmo de detecção do complexo QRS a ser estudado e aplicado será o algoritmo de _Pan-Thompkins_, cujas etapas de processamento serão abordadas mais adiante. A discussão inclui a análise em pormenor do um código fonte desenvolvido neste trabalho e que utilizou parâmetros previamente estabelecidos em literatura sobre o tema [ref. ÁLVAREZ].  
+O algoritmo de detecção do complexo QRS a ser estudado e aplicado será o algoritmo de _Pan & Thompkins_, cujas etapas de processamento serão abordadas mais adiante. A discussão inclui a análise em pormenor do um código fonte desenvolvido neste trabalho e que utilizou parâmetros previamente estabelecidos em literatura sobre o tema [ref. ÁLVAREZ].  
 
-O algoritmo de _Pan-Thopmpkins_ será aplicado sobre uma base de dados pública, obtida gratuitamente do bando de dados do _Physionet_[nota 2]. Mais especificamente, os dados que utilizaremos foram coletados e armazenados pelo _MIT_ e pelo _Boston’s Beth Israel Hospital_ (_MIT-BIH Arrhythmia Database_) segundo metodologia amplamente submetida a discussões e críticas – **ainda hoje carregando bastante credibilidade e relevância acadêmica**. Além, disso essa base de dados é focada em sinais com as mais diversas morfologias de complexos QRS[nota 3],  o que permite investigar a performance dos algoritmos de detecção desses complexos – daí, portanto, seu extensivo uso para validação desses algoritmos.  
+O algoritmo de _Pan & Thopmpkins_ será aplicado sobre uma base de dados pública, obtida gratuitamente do bando de dados do _Physionet_[nota 2]. Mais especificamente, os dados que utilizaremos foram coletados e armazenados pelo _MIT_ e pelo _Boston’s Beth Israel Hospital_ (_MIT-BIH Arrhythmia Database_) segundo metodologia amplamente submetida a discussões e críticas, o que colaborou para manter sua relevância acadêmica. Além disso, essa base de dados é focada em sinais com as mais diversas morfologias de complexos QRS[nota 3],  o que permite investigar a performance dos algoritmos de detecção desses complexos – daí, portanto, seu extensivo uso para validação desses algoritmos.  
 
 O _MIT-BIH Arrhythmia Database_ contém 48 horas e meia de gravações coletadas utilizando-se dois canais de entrada. Todavia, o código fonte que desenvolvemos processará somente um desses canais: se um desses canais registrar sinais de alta qualidade, normalmente isso implica que o segundo canal registrará sinais de baixa amplitude e de baixa relação sinal-ruído[nota 4] (obs.: talvez mais alguma informação sobre o MIT-BIH).  
 
@@ -37,7 +37,7 @@ O código fonte desenvolvido neste trabalho pode ser dividido em três momentos.
 
 ###2.1 Fase de estabelecimento  
 
-Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_, _lattice_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
+Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
 
 ```{r setoptions}
 knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "hide")
@@ -48,7 +48,6 @@ knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
 library(signal)
 library(ggplot2)
-library(lattice)
 library(gridExtra)
 
 #Baixar os arquivos "mitdb_ecgSignals.csv" e "fs.csv" - caso ainda não tenham sido.
@@ -448,7 +447,8 @@ initializingVariables <- function() {
 #---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
 #---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
 #---(4) "Fs", frequencia de amostragem dos sinais.
-classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
+classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR,
+                              Fs = fs) {
       #A função "lst2vct()" simplesmente transforma uma lista de vetores em um único 
       #---vetor, o que será necessário mais adiante.
       lst2vct <- function(lst) {
@@ -525,8 +525,11 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
             index.RpeakAUX <- index.RpeakAUX + 1
             if (!is.na(PEAKI)) {
                   if (PEAKI > THR1) {
-                        lastIndex.originalSpeak <- (index.originalSpeaks[length(index.originalSpeaks)])
-                        lastRR.originalInterval <- (index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak)
+                        lastIndex.originalSpeak <- (index.originalSpeaks
+                                                    [length(index.originalSpeaks)])
+                        lastRR.originalInterval <- (index.originalALLpeaks
+                                                    [[index.RpeakAUX]]
+                                                    - lastIndex.originalSpeak)
                         #As condições abaixo servem para indicar falsos positivos, ou 
                         #---seja, se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
@@ -534,11 +537,17 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
                                     beforeIndex <- lastIndex.originalSpeak
                                     if (lastIndex < dim(originalValues)[1]){
-                                          lastSlope <- (originalValues$signal_mag[lastIndex+1] - originalValues$signal_mag[lastIndex-1]) * Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex+1] - originalValues
+                                                        $signal_mag[lastIndex-1]) * Fs/2
                                     } else {
-                                          lastSlope <- (originalValues$signal_mag[lastIndex] - originalValues$signal_mag[lastIndex-1]) * Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex] - originalValues
+                                                        $signal_mag[lastIndex-1]) * Fs/2
                                     }
-                                    beforeSlope <- (originalValues$signal_mag[beforeIndex+1] - originalValues$signal_mag[beforeIndex-1]) * Fs/2
+                                    beforeSlope <- (originalValues$signal_mag
+                                                    [beforeIndex+1] - originalValues
+                                                    $signal_mag[beforeIndex-1]) * Fs/2
                                     if (abs(lastSlope) < (abs(beforeSlope)/2)) {
                                           if (length(index.falsePos) < index) {
                                                 index.falsePos[[index]] <<- list()
@@ -558,7 +567,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     if (length(index.falsePos) < index) {
                                           index.falsePos[[index]] <<- list()
                                     }
-                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <- lastIndex.originalSpeak
+                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <-
+                                          lastIndex.originalSpeak
                                     indexIn <- indexIn + 1
                                     if (is.null(num.falsePosAUX)) {
                                           num.falsePosAUX <- 0
@@ -575,20 +585,40 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
                         if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)){
-                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)])
-                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2])
+                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1)
+                                                           :(index.RpeakAUX-1)])
+                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1
+                                                               & peakValuesAUX > THR2])
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
                               if (!is.infinite(new.Rpeak)) {
                                     if (is.null(num.falseNegAUX)) {
                                           num.falseNegAUX <- 0
                                     }
                                     num.falseNegAUX <- num.falseNegAUX + 1
-                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak])
-                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)])
+                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX
+                                                                 [!is.na(peakValuesAUX)]))
+                                                       [peakValuesAUX
+                                                       [!is.na(peakValuesAUX)]==new.Rpeak]
+                                                       )
+                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))
+                                                       [peakValuesAUX==new.Rpeak
+                                                       & !is.na(peakValuesAUX)])
                                     signal.peaksAUX <- c(signal.peaksAUX,
                                                          new.Rpeak,PEAKI)
-                                    noise.peaksAUX <- c((noise.peaksAUX[1:(length(noise.peaksAUX) - length(peakValuesAUX[!is.na(peakValuesAUX)]))]),
-                                                        (noise.peaksAUX[(length(noise.peaksAUX) - length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1]))
+                                    noise.peaksAUX <- c((noise.peaksAUX
+                                                         [1:(length(noise.peaksAUX)
+                                                             - length(peakValuesAUX
+                                                                      [!is.na(
+                                                                            peakValuesAUX)
+                                                                      ]))]),
+                                                        (noise.peaksAUX[(length(
+                                                              noise.peaksAUX)
+                                                              - length(
+                                                                    peakValuesAUX
+                                                                    [!is.na(peakValuesAUX)
+                                                                    ])+1):length(
+                                                                          noise.peaksAUX)]
+                                                         [-indexRm.Npeak1]))
                                     index.Speaks <- c(index.Speaks,
                                                       lastIndex.Speak + indexRm.Npeak2,
                                                       index.RpeakAUX)
@@ -629,21 +659,12 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
 
 ```
 
-Em seguida, os códigos que executam as funções anteriormente apresentadas.
+Em seguida, apresentamos os códigos que executam as funções anteriormente apresentadas.
 
 ```{r graph6}
 initializingVariables()
 
-classifying.peaks(dt.signal[[1]], peakValues[[1]], peakIndex[[1]], initial.THR[[1]])
-classifying.peaks(dt.signal[[2]], peakValues[[2]], peakIndex[[2]], initial.THR[[2]])
-classifying.peaks(dt.signal[[3]], peakValues[[3]], peakIndex[[3]], initial.THR[[3]])
-classifying.peaks(dt.signal[[4]], peakValues[[4]], peakIndex[[4]], initial.THR[[4]])
-classifying.peaks(dt.signal[[5]], peakValues[[5]], peakIndex[[5]], initial.THR[[5]])
-classifying.peaks(dt.signal[[6]], peakValues[[6]], peakIndex[[6]], initial.THR[[6]])
-classifying.peaks(dt.signal[[7]], peakValues[[7]], peakIndex[[7]], initial.THR[[7]])
-classifying.peaks(dt.signal[[8]], peakValues[[8]], peakIndex[[8]], initial.THR[[8]])
-#classifying.peaks(dt.signal[[9]], peakValues[[9]], peakIndex[[9]], initial.THR[[9]])
-#classifying.peaks(dt.signal[[10]], peakValues[[10]], peakIndex[[10]], initial.THR[[10]])
+mapply(classifying.peaks, dt.signal, peakValues, peakIndex, initial.THR)
 
 dt.signalRRinterval <- RR.originalIntervals
 dt.signalFalsePos <- num.falsePos
@@ -702,8 +723,8 @@ Isso permitirá um aumento na confiabilidade da detecção se comparado à detec
 
 Então, os dados assim obtidos estão representados na tabela a seguir.  
 
-Caso | Média e dp | Média e dp após norm.
------|------------|----------------------
-100  |`r Mean1[1]`|`r Mean1[2]`
+Caso|Média e dp|Média e dp após norm.|Nº QRS verdadeiro(Nv)|Nº QRS detectado(Nd)|Nº Falso Positivo|
+----|----------|---------------------|---------------------|--------------------|-----------------|
+100 |`r Mean1[1]` e `r Std1[1]`|`r Mean2[1]` e `r Std2[1]`| | |`r num.falsePos[1]]` 
 
 ***
