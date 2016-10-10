@@ -26,7 +26,7 @@ mapply(download, Local, Url)
 
 #Salvar em formatos adequados as variáveis que representam os sinais.
 Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
-Ecg.signals <- Ecg.signals[-((6*21601+1):dim(Ecg.signals)[1]),]
+#Ecg.signals <- Ecg.signals[-((6*21601+1):dim(Ecg.signals)[1]),]
 Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
 fs <- read.csv("fs.csv")
 fs <- as.numeric(fs)
@@ -338,7 +338,8 @@ THR <- function(SPKI, NPKI) {
 #---(2) "peakValues" e "peaksIndex", as listas geradas pela função "peakDetection()";
 #---(3) "initialTHR", a lista com os parâmetros iniciais de classificação de picos;
 #---(4) "Fs", frequencia de amostragem dos sinais.
-classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR, Fs = fs) {
+classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR,
+                              Fs = fs) {
       #A função "lst2vct()" simplesmente transforma uma lista de vetores em um único 
       #---vetor, o que será necessário mais adiante.
       lst2vct <- function(lst) {
@@ -415,8 +416,11 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
             index.RpeakAUX <- index.RpeakAUX + 1
             if (!is.na(PEAKI)) {
                   if (PEAKI > THR1) {
-                        lastIndex.originalSpeak <- (index.originalSpeaks[length(index.originalSpeaks)])
-                        lastRR.originalInterval <- (index.originalALLpeaks[[index.RpeakAUX]] - lastIndex.originalSpeak)
+                        lastIndex.originalSpeak <- (index.originalSpeaks
+                                                    [length(index.originalSpeaks)])
+                        lastRR.originalInterval <- (index.originalALLpeaks
+                                                    [[index.RpeakAUX]]
+                                                    - lastIndex.originalSpeak)
                         #As condições abaixo servem para indicar falsos positivos, ou 
                         #---seja, se um pico detectado como R é, na verdade, um pico T.
                         if (lastRR.originalInterval < 0.36*Fs) {
@@ -424,11 +428,17 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     lastIndex <- index.originalALLpeaks[[index.RpeakAUX]]
                                     beforeIndex <- lastIndex.originalSpeak
                                     if (lastIndex < dim(originalValues)[1]){
-                                          lastSlope <- (originalValues$signal_mag[lastIndex+1] - originalValues$signal_mag[lastIndex-1]) * Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex+1] - originalValues
+                                                        $signal_mag[lastIndex-1]) * Fs/2
                                     } else {
-                                          lastSlope <- (originalValues$signal_mag[lastIndex] - originalValues$signal_mag[lastIndex-1]) * Fs/2
+                                          lastSlope <- (originalValues$signal_mag
+                                                        [lastIndex] - originalValues
+                                                        $signal_mag[lastIndex-1]) * Fs/2
                                     }
-                                    beforeSlope <- (originalValues$signal_mag[beforeIndex+1] - originalValues$signal_mag[beforeIndex-1]) * Fs/2
+                                    beforeSlope <- (originalValues$signal_mag
+                                                    [beforeIndex+1] - originalValues
+                                                    $signal_mag[beforeIndex-1]) * Fs/2
                                     if (abs(lastSlope) < (abs(beforeSlope)/2)) {
                                           if (length(index.falsePos) < index) {
                                                 index.falsePos[[index]] <<- list()
@@ -448,7 +458,8 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                                     if (length(index.falsePos) < index) {
                                           index.falsePos[[index]] <<- list()
                                     }
-                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <- lastIndex.originalSpeak
+                                    index.falsePos[[index]][[indexIn]] <<- lastIndex <-
+                                          lastIndex.originalSpeak
                                     indexIn <- indexIn + 1
                                     if (is.null(num.falsePosAUX)) {
                                           num.falsePosAUX <- 0
@@ -465,20 +476,40 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
                         #---suposto atual existe outro pico R não detectado. 
                         lastIndex.Speak <- index.Speaks[length(index.Speaks)]
                         if (lastRR.originalInterval > 1.66*mean(RR.originalIntervalsAUX)){
-                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1):(index.RpeakAUX-1)])
-                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1 & peakValuesAUX > THR2])
+                              peakValuesAUX <- (peakValues[(lastIndex.Speak+1)
+                                                           :(index.RpeakAUX-1)])
+                              peakValuesAUX2 <- (peakValuesAUX[peakValuesAUX < THR1
+                                                               & peakValuesAUX > THR2])
                               new.Rpeak <- max(peakValuesAUX2, na.rm = TRUE)
                               if (!is.infinite(new.Rpeak)) {
                                     if (is.null(num.falseNegAUX)) {
                                           num.falseNegAUX <- 0
                                     }
                                     num.falseNegAUX <- num.falseNegAUX + 1
-                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX[!is.na(peakValuesAUX)]))[peakValuesAUX[!is.na(peakValuesAUX)]==new.Rpeak])
-                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))[peakValuesAUX==new.Rpeak & !is.na(peakValuesAUX)])
+                                    indexRm.Npeak1 <- ((1:length(peakValuesAUX
+                                                                 [!is.na(peakValuesAUX)]))
+                                                       [peakValuesAUX
+                                                       [!is.na(peakValuesAUX)]==new.Rpeak]
+                                                       )
+                                    indexRm.Npeak2 <- ((1:length(peakValuesAUX))
+                                                       [peakValuesAUX==new.Rpeak
+                                                       & !is.na(peakValuesAUX)])
                                     signal.peaksAUX <- c(signal.peaksAUX,
                                                          new.Rpeak,PEAKI)
-                                    noise.peaksAUX <- c((noise.peaksAUX[1:(length(noise.peaksAUX) - length(peakValuesAUX[!is.na(peakValuesAUX)]))]),
-                                                        (noise.peaksAUX[(length(noise.peaksAUX) - length(peakValuesAUX[!is.na(peakValuesAUX)])+1):length(noise.peaksAUX)][-indexRm.Npeak1]))
+                                    noise.peaksAUX <- c((noise.peaksAUX
+                                                         [1:(length(noise.peaksAUX)
+                                                             - length(peakValuesAUX
+                                                                      [!is.na(
+                                                                            peakValuesAUX)
+                                                                      ]))]),
+                                                        (noise.peaksAUX[(length(
+                                                              noise.peaksAUX)
+                                                              - length(
+                                                                    peakValuesAUX
+                                                                    [!is.na(peakValuesAUX)
+                                                                    ])+1):length(
+                                                                          noise.peaksAUX)]
+                                                         [-indexRm.Npeak1]))
                                     index.Speaks <- c(index.Speaks,
                                                       lastIndex.Speak + indexRm.Npeak2,
                                                       index.RpeakAUX)
@@ -506,9 +537,13 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       #---"num.falsePos", "num.falseNeg" e "index.falsePos".
       if (!is.null(num.falsePosAUX)) {
             num.falsePos[[index]] <<- num.falsePosAUX
+      } else {
+            num.falsePos[[index]] <<- 0
       }
       if (!is.null(num.falseNegAUX)) {
             num.falseNeg[[index]] <<- num.falseNegAUX
+      } else {
+            num.falseNeg[[index]] <<- 0
       }
       index.Rpeak[[index]] <<- index.originalSpeaks
       noise.peaks[[index]] <<- noise.peaksAUX

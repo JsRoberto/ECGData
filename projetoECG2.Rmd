@@ -1,7 +1,7 @@
 ---
 title: "Algoritmo de Pan & Tompkins para detecção de complexos QRS"
 author: "José Roberto Sobrinho Lima e Luana Gonçalves"
-date: "8 de outubro de 2016"
+date: "10 de outubro de 2016"
 output: pdf_document
 ---
 ***
@@ -40,10 +40,10 @@ O código fonte desenvolvido neste trabalho pode ser dividido em três momentos.
 Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
 
 ```{r setoptions}
-knitr::opts_chunk$set(autodep = TRUE, cache = TRUE, warning = FALSE, results = "hide")
+knitr::opts_chunk$set(autodep = FALSE, cache = FALSE, warning = FALSE, results = "hide")
 ```
 
-```{r}
+```{r graph1}
 #Localizar a biblioteca e definir os pacotes não padrões a serem utilizados.
 .libPaths("C:/Users/JoséRoberto/AppData/Roaming/SPB_16.6/R/win-library/3.2")
 library(signal)
@@ -69,17 +69,11 @@ Ecg.signals <- read.csv("mitdb_ecgSignals.csv", stringsAsFactors = FALSE)
 Ecg.signalSplit <- split(Ecg.signals, Ecg.signals$signal_case)
 fs <- read.csv("fs.csv")
 fs <- as.numeric(fs)
-```
-  
-```{r results = "markup"}
+
 #São obtidos a média "Mean1" e o desvio padrão "Std1" dos sinais não filtrados.
 Mean1 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
 Std1 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
-Mean1
-Std1
-```
-  
-```{r}
+
 #A função "filter_ecgSignals()" pretende aplicar sobre a lista de sinais "data_ecg" o 
 #---filtro definido por uma função de transferência com numerador "H_Num" e denominador
 #---"H_Den". Além disso, o sinal filtrado resultante "x_norm" está normalizado.
@@ -104,17 +98,11 @@ update.filtSignal <- function(Ecg.signalSplit, x_norm) {
 }
 
 update.filtSignal(Ecg.signalSplit, x_norm)
-```
-  
-```{r results = "markup"}
+
 #São obtidos a média "Mean2" e o desvio padrão "Std2" dos sinais normalizados.
 Mean2 <- sapply(Ecg.signalSplit, function(x) mean(x$signal_mag, na.rm = TRUE))
 Std2 <- sapply(Ecg.signalSplit, function(x) sd(x$signal_mag, na.rm = TRUE))
-Mean2
-Std2
-```
-  
-```{r graph1}
+
 #A função "dataECGplot()" é a principal função de plotagem do código, responsável por 
 #---mostrar a evolução do sinal em cada etapa de processamento.
 #---Seus argumentos são:
@@ -132,17 +120,6 @@ dataECGplot <- function(Ecg.signalSplit, interval_seg = 0:60, Fs = fs) {
             Ecg.signalsAUX <- rbind(Ecg.signalsAUX,Ecg.signalSplit[[i]])
       }
       Ecg.signalsAUX$signal_mag <- signal_mag
-      
-      #panel.smoother <- function(x, y) {
-      #      panel.grid(h=-1, v=-1)
-      #      panel.xyplot(x, y, type = "l", lwd = 1)
-      #      panel.abline(h=mean(y), lwd=1, lty=2, col="navy")
-      #}
-      
-      #xyplot(signal_mag ~ t | signal_case, data = Ecg.signalsAUX,
-      #       layout=c(3,2),
-      #       panel=panel.smoother,
-      #       main="Ecg Signals", xlab="time (s)",ylab="Volts")
       
       p1 <- ggplot(Ecg.signalsAUX, aes(x = t, y = signal_mag, group = signal_case)) + 
                   geom_line(color = "blue3") + 
@@ -370,10 +347,10 @@ peakDetection(dt.signal, 80, fs)
 
 O algoritmo para obtenção dos parâmetros adaptativos consiste nas seguintes variáveis de iteração:  
 
-SPKI = 0.125 × PEAKI + 0.875 × SPKI **(1)**  
-NPKI = 0.125 × PEAKI + 0.875 × NPKI **(2)**  
-THR1 = NPKI + 0.25 × (SPKI - NPKI) **(3)**  
-THR2 = 0.5 × THR1 **(4)**  
+SPKI = 0.125 × PEAKI + 0.875 × SPKI  **(1)**  
+NPKI = 0.125 × PEAKI + 0.875 × NPKI  **(2)**  
+THR1 = NPKI + 0.25 × (SPKI - NPKI)   **(3)**  
+THR2 = 0.5 × THR1                    **(4)**  
 
 Onde PEAKI é o pico corrente, aplicado sobre a função **(1)** se for um pico de sinal ou sobre a função **(2)** se for um pico de ruido; e as variáveis THR1 e THR2 de **(3)** e **(4)**, respectivamente, são os parâmetros de classificação que se adaptam a cada novo pico classificado.
 
@@ -646,9 +623,13 @@ classifying.peaks <- function(originalValues, peakValues, peakIndex, initial.THR
       #---"num.falsePos", "num.falseNeg" e "index.falsePos".
       if (!is.null(num.falsePosAUX)) {
             num.falsePos[[index]] <<- num.falsePosAUX
+      } else {
+            num.falsePos[[index]] <<- 0
       }
       if (!is.null(num.falseNegAUX)) {
             num.falseNeg[[index]] <<- num.falseNegAUX
+      } else {
+            num.falseNeg[[index]] <<- 0
       }
       index.Rpeak[[index]] <<- index.originalSpeaks
       noise.peaks[[index]] <<- noise.peaksAUX
@@ -721,10 +702,30 @@ A aplicação do algoritmo de decisão de _Pan & Tompkins_ sobre ambas as listas
 
 Isso permitirá um aumento na confiabilidade da detecção se comparado à detecção feita com apenas um deles, _dt.signal_ ou _mwi.signal_. Cabe ressaltar, contudo, que não executamos no nosso trabalho esta última etapa do processamento, limitando-nos a utilizar os resultados que o algoritmo de classificação obteve quando aplicado sobre _dt.signal_.  
 
-Então, os dados assim obtidos estão representados na tabela a seguir.  
+Então, os dados assim obtidos estão representados nas tabelas a seguir.  
 
-Caso|Média e dp|Média e dp após norm.|Nº QRS verdadeiro(Nv)|Nº QRS detectado(Nd)|Nº Falso Positivo|
-----|----------|---------------------|---------------------|--------------------|-----------------|
-100 |`r Mean1[1]` e `r Std1[1]`|`r Mean2[1]` e `r Std2[1]`| | |`r num.falsePos[1]]` 
+Caso|Média e dp|Média e dp após norm.|Nº QRS verdadeiro(Nv)|Nº QRS detectado(Nd)
+----|----------|---------------------|---------------------|--------------------
+102|`r round(Mean1[1],2)` (`r round(Std1[1],2)`)|`r round(Mean2[1],2)` (`r round(Std2[1],2)`)|`r length(dt.signalSPeaks[[1]])`|`r length(dt.signalSPeaks[[1]]) + dt.signalFalsePos[[1]]`
+103|`r round(Mean1[2],2)` (`r round(Std1[2],2)`)|`r round(Mean2[2],2)` (`r round(Std2[2],2)`)|`r length(dt.signalSPeaks[[2]])`|`r length(dt.signalSPeaks[[2]]) + dt.signalFalsePos[[2]]`|`r dt.signalFalsePos[[2]]`
+104|`r round(Mean1[3],2)` (`r round(Std1[3],2)`)|`r round(Mean2[3],2)` (`r round(Std2[3],2)`)|`r length(dt.signalSPeaks[[3]])`|`r length(dt.signalSPeaks[[3]]) + dt.signalFalsePos[[3]]`|`r dt.signalFalsePos[[3]]`
+105|`r round(Mean1[4],2)` (`r round(Std1[4],2)`)|`r round(Mean2[4],2)` (`r round(Std2[4],2)`)|`r length(dt.signalSPeaks[[4]])`|`r length(dt.signalSPeaks[[4]]) + dt.signalFalsePos[[4]]`|`r dt.signalFalsePos[[4]]`
+106|`r round(Mean1[5],2)` (`r round(Std1[5],2)`)|`r round(Mean2[5],2)` (`r round(Std2[5],2)`)|`r length(dt.signalSPeaks[[5]])`|`r length(dt.signalSPeaks[[5]]) + dt.signalFalsePos[[5]]`|`r dt.signalFalsePos[[5]]`
+107|`r round(Mean1[6],2)` (`r round(Std1[6],2)`)|`r round(Mean2[6],2)` (`r round(Std2[6],2)`)|`r length(dt.signalSPeaks[[6]])`|`r length(dt.signalSPeaks[[6]]) + dt.signalFalsePos[[6]]`|`r dt.signalFalsePos[[6]]`
+
+  
+  
+Caso|Nº Falso Positivo(FP)|%FP = 100×FP/Nv|Nº Falso Positivo(FN)|%FN = 100×FN/Nv
+----|---------------------|---------------|---------------------|---------------
+102|`r dt.signalFalsePos[[1]]`|`r signif(100*dt.signalFalsePos[[1]]/length(dt.signalSPeaks[[1]]),4)` %|`r dt.signalFalseNeg[[1]]`|`r signif(100*dt.signalFalseNeg[[1]]/length(dt.signalSPeaks[[1]]),4)` %
+103|`r dt.signalFalsePos[[2]]`|`r signif(100*dt.signalFalsePos[[2]]/length(dt.signalSPeaks[[2]]),4)` %|`r dt.signalFalseNeg[[2]]`|`r signif(100*dt.signalFalseNeg[[2]]/length(dt.signalSPeaks[[2]]),4)` %
+104|`r dt.signalFalsePos[[3]]`|`r signif(100*dt.signalFalsePos[[3]]/length(dt.signalSPeaks[[3]]),4)` %|`r dt.signalFalseNeg[[3]]`|`r signif(100*dt.signalFalseNeg[[3]]/length(dt.signalSPeaks[[3]]),4)` %
+105|`r dt.signalFalsePos[[4]]`|`r signif(100*dt.signalFalsePos[[4]]/length(dt.signalSPeaks[[4]]),4)` %|`r dt.signalFalseNeg[[4]]`|`r signif(100*dt.signalFalseNeg[[4]]/length(dt.signalSPeaks[[4]]),4)` %
+106|`r dt.signalFalsePos[[5]]`|`r signif(100*dt.signalFalsePos[[5]]/length(dt.signalSPeaks[[5]]),4)` %|`r dt.signalFalseNeg[[5]]`|`r signif(100*dt.signalFalseNeg[[5]]/length(dt.signalSPeaks[[5]]),4)` %
+107|`r dt.signalFalsePos[[6]]`|`r signif(100*dt.signalFalsePos[[6]]/length(dt.signalSPeaks[[6]]),4)` %|`r dt.signalFalseNeg[[6]]`|`r signif(100*dt.signalFalseNeg[[6]]/length(dt.signalSPeaks[[6]]),4)` %
+
+
+
+
 
 ***
