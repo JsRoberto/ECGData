@@ -5,30 +5,25 @@ date: "10 de outubro de 2016"
 output: pdf_document
 ---
 ***
-#Relatório  
-***
-
 ##1. Introdução e Metodologia  
 
 Doenças cardíacas estão entre as principais causas de mortalidade no mundo. Por esse motivo, há constante preocupação em melhorar o poder diagnóstico de equipamentos que monitoram a condição cardíaca. Uma grande variedade de dispositivos analisa a atividade cardíaca, produzindo informações que facilmente podem ser digitalizadas e processadas por computador. A medida que o poder computacional dessas máquinas cresce, os diagnósticos resultantes apresentam acurácia e precisão maiores.  
 
-Em processamento de eletrocardiogramas (ECG), uma base importante para fundamentar posteriores análises dos dados é a acurácia na detecção de batimentos cardíacos. Nesse sentido, como a energia dos batimentos está localizada nos complexos QRS[nota 1], acurácia na detecção desses complexos é essencial para a análise de ECG.  
+Em processamento de eletrocardiogramas (ECG), uma base importante para fundamentar posteriores análises dos dados é a precisão na detecção de batimentos cardíacos. Nesse sentido, como a energia dos batimentos está localizada nos complexos QRS, o foco na detecção desses complexos é essencial para a análise de ECG.  
 
 Devido à variação ao longo do tempo e aos diferentes tipos de ruído que podem contaminar o sinal ECG, a detecção do complexo QRS é uma tarefa difícil.  
 
 Os algoritmos de detecção dos complexos QRS apresentam duas fases distintas: (1) o estágio de pré-processamento, que consiste em aplicar técnicas de filtragem linear e não linear ou “_smoothing_” – o objetivo é atenuar as ondas P e T, bem como os ruídos contaminantes; e (2) o estágio de decisão, que apresenta como tarefas mais importantes a determinação de “_thresholds_” para classificação e, em alguns casos, a discriminação de ondas T e a redução de falsos positivos.  
 
-O algoritmo de detecção do complexo QRS a ser estudado e aplicado será o algoritmo de _Pan & Thompkins_, cujas etapas de processamento serão abordadas mais adiante. A discussão inclui a análise em pormenor do um código fonte desenvolvido neste trabalho e que utilizou parâmetros previamente estabelecidos em literatura sobre o tema [ref. ÁLVAREZ].  
+O algoritmo de detecção do complexo QRS a ser estudado e aplicado será o algoritmo de _Pan & Tompkins_, cujas etapas de processamento serão abordadas mais adiante. A discussão inclui a análise em pormenor do código fonte desenvolvido neste trabalho e que utilizou parâmetros previamente estabelecidos em literatura sobre o tema [ÁLVAREZ][1].  
 
-O algoritmo de _Pan & Thopmpkins_ será aplicado sobre uma base de dados pública, obtida gratuitamente do bando de dados do _Physionet_[nota 2]. Mais especificamente, os dados que utilizaremos foram coletados e armazenados pelo _MIT_ e pelo _Boston’s Beth Israel Hospital_ (_MIT-BIH Arrhythmia Database_) segundo metodologia amplamente submetida a discussões e críticas, o que colaborou para manter sua relevância acadêmica. Além disso, essa base de dados é focada em sinais com as mais diversas morfologias de complexos QRS[nota 3],  o que permite investigar a performance dos algoritmos de detecção desses complexos – daí, portanto, seu extensivo uso para validação desses algoritmos.  
+O algoritmo de _Pan & Topmpkins_ será aplicado sobre uma base de dados pública, o bando de dados [Physionet](http://www.physionet.org/physiobank/database/#ecg). Mais especificamente, os dados que utilizaremos foram coletados e armazenados pelo _MIT_ e pelo _Boston’s Beth Israel Hospital_ (_MIT-BIH Arrhythmia Database_) segundo metodologia amplamente submetida a discussões e críticas, o que colaborou para manter sua relevância acadêmica. Além disso, essa base de dados é focada em sinais com as mais diversas morfologias de complexos QRS,  o que permite investigar a performance dos algoritmos de detecção desses complexos – daí, portanto, seu extensivo uso para validação desses algoritmos.  
 
-O _MIT-BIH Arrhythmia Database_ contém 48 horas e meia de gravações coletadas utilizando-se dois canais de entrada. Todavia, o código fonte que desenvolvemos processará somente um desses canais: se um desses canais registrar sinais de alta qualidade, normalmente isso implica que o segundo canal registrará sinais de baixa amplitude e de baixa relação sinal-ruído[nota 4] (obs.: talvez mais alguma informação sobre o MIT-BIH).  
+O _MIT-BIH Arrhythmia Database_ contém 48 horas e meia de gravações coletadas utilizando-se dois canais de entrada. Todavia, o código fonte que desenvolvemos processará somente um desses canais: se um desses canais registrar sinais de alta qualidade, normalmente isso implica que o segundo canal registrará sinais de baixa amplitude e de baixa relação sinal-ruído.  
 
 Os softwares utilizados serão:   
-(1) _MatLab_, da _Mathworks_ – utilizar-se-á o WFDB Toolbox[nota 5], 
-(2) _RStudio_, linguagem de programação R – ...para realizar o processamento dos sinais de ECG do MIT-BIH é a linguagem de programação R. Seus principais atrativos são seus ferramentais voltados para computação estatística e modelagem gráfica. Além disso, o software é _open source_ e apresenta estrutura multiplataforma.  
-
-O algoritmo de Pan-Thompkins é baseado em filtros digitais, possuindo filtros passa-baixa e passa-alta em cascata e com frequências de cortes diferentes resultando em um sinal filtrado passa-banda.
+(1) _MatLab_, da _Mathworks_ – utilizar-se-á o WFDB Toolbox apara baixar os dados do _Physionet_; 
+(2) _RStudio_, linguagem de programação R – utilizar-se-á esta linguagem para o processamento dos sinais de ECG do MIT-BIH. Seus principais atrativos são seus ferramentais voltados para computação estatística e modelagem gráfica. Além disso, o software é _open source_ e apresenta estrutura multiplataforma.  
 
 ***
 ##2. O código fonte  
@@ -37,7 +32,7 @@ O código fonte desenvolvido neste trabalho pode ser dividido em três momentos.
 
 ###2.1 Fase de estabelecimento  
 
-Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave[ref. signal CRAN]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
+Esta etapa consiste em (1) estabelecer as bibliotecas a serem utilizadas dentro do código, entre as quais temos os pacotes gráficos _ggplot2_ e _gridExtra_, além do pacote _signal_, com funções de filtros digitais diretamente importadas do MatLab e Octave [CRAN - package signal][2]; (2) baixar e salvar no diretório de trabalho os dois arquivos necessários ao processamento – *mtidb_signals.csv* e *fs.csv*; e (3) criar a principal função de plotagem gráfica _dataECGplot()_, que mostrará os resultados das principais etapas do processamento dos sinais.  
 
 ```{r setoptions}
 knitr::opts_chunk$set(autodep = FALSE, cache = FALSE, warning = FALSE, results = "hide")
@@ -138,14 +133,16 @@ dataECGplot(Ecg.signalSplit, 25:35)
   
 ###2.2 Algoritmo de _Pan & Thompkins_  
 
-O método que Pan & Tompkins desenvolveram para realizar a detecção dos complexos QRS de sinais de ECG é capaz de realizar a tarefa em tempo. Para tanto, o algoritmo é baseado na inclinação, amplitude e tamanho do sinal - não se limita, pois, somente à inclinação da onda R do sinal.  
+O método que _Pan & Tompkins_ desenvolveram para realizar a detecção dos complexos QRS de sinais de ECG é capaz de realizar a tarefa em tempo. Para tanto, o algoritmo é baseado na inclinação, amplitude e tamanho do sinal - não se limita, pois, somente à inclinação da onda R do sinal.  
+
 Esse algoritmo é divido em dois estágios, pré-processamento e decisão.  
 O estágio de pré-processamento consiste em preparar os sinais para a posterior detecção, eliminando os ruidos dos sinais mediante filtros e realçando a inclinação QRS para tornar mais eficiente sua detecção.  
+
 O estágio de decisão consiste em (1) detectar os picos dos sinais, (2) obter e atualizar constantee automaticamente parâmetros que classifiquem esses picos detectados, ou como oriundos de ruidos, ou como próprios do sinal. As informações obtidas durante essa etapa são utilizadas principalmente para eliminar falsos positivos e reintegrar falsos negativos.
 
 ####2.2.1 Fase de pré-processamento  
 
-Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata, com o intuito de construir um passa-banda entre 9-20 Hz com 3 dB de atenuação [ref. RANGAYYAN]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o "baseline drift". O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).  
+Nessa fase, o sinal passa por um bloco de filtros para reduzir ruídos e influência das ondas T. Esse bloco de filtros é composto por um passa-baixa e um passa-alta em cascata, com o intuito de construir um passa-banda entre 9-20 Hz com 3 dB de atenuação [RANGAYYAN][3]. O passa-baixa é usado para remover ruídos de altas frequências e o passa-alta é usado para atenuar as ondas P e T e o _baseline drift_ do sinal. O filtro digital passa-banda aumenta a relação sinal-ruido (SNR).  
 
 ```{r graph2, fig.height = 5, fig.width = 5, fig.align = "center"}
 #Bloco 1 - Filtro passa-baixa.
@@ -250,7 +247,11 @@ x_norm <- as.data.frame(x_norm)
 update.filtSignal(Ecg.signalSplit, x_norm)
 ```  
 
-Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS. As dificuldades são que (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo ÁLVAREZ, com uma janela de 150 ms - isso corresponde a `r 0.15*fs` amostras para os dados utilizados neste trabalho. Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
+Finalmente, uma janela de integração móvel é aplicada, o que agrega informações sobre inclinação e largura do sinal. O tamanho da janela de integração é muito importante, uma vez que deve sempre conter o complexo QRS.  
+
+As dificuldades são as seguintes: (1) o complexo QRS pode apresentar diferentes extensões e (2) o tamanho da janela não deve excedê-lo, porquanto não deve se misturar a outras formas de onda, como a onda T. A janela utilizada apresenteu os melhores resultados, segundo [ÁLVAREZ][1], com uma janela de 150 ms - isso corresponde a `r 0.15*fs` amostras para os dados utilizados neste trabalho.  
+
+Além disso, cabe ressaltar que todas as etapas de processamento, seja a etapa dos filtros que constituem o passa-banda, as operações derivativas ou a janela de integração móvel, todas elas causam _delays_ que devem ser considerados quando comparados os sinais resultantes de cada etapa.  
 
 ```{r graph5}
 #Bloco 5 - Janela de integração móvel
@@ -715,7 +716,7 @@ Caso|Média e dp|Média e dp após norm.|Nº QRS verdadeiro(Nv)|Nº QRS detectad
 
   
   
-Caso|Nº Falso Positivo(FP)|%FP = 100×FP/Nv|Nº Falso Positivo(FN)|%FN = 100×FN/Nv
+Caso|Nº Falso Positivo(FP)|%FP = 100×FP/Nv|Nº Falso Negativo(FN)|%FN = 100×FN/Nv
 ----|---------------------|---------------|---------------------|---------------
 102|`r dt.signalFalsePos[[1]]`|`r signif(100*dt.signalFalsePos[[1]]/length(dt.signalSPeaks[[1]]),4)` %|`r dt.signalFalseNeg[[1]]`|`r signif(100*dt.signalFalseNeg[[1]]/length(dt.signalSPeaks[[1]]),4)` %
 103|`r dt.signalFalsePos[[2]]`|`r signif(100*dt.signalFalsePos[[2]]/length(dt.signalSPeaks[[2]]),4)` %|`r dt.signalFalseNeg[[2]]`|`r signif(100*dt.signalFalseNeg[[2]]/length(dt.signalSPeaks[[2]]),4)` %
@@ -724,8 +725,20 @@ Caso|Nº Falso Positivo(FP)|%FP = 100×FP/Nv|Nº Falso Positivo(FN)|%FN = 100×F
 106|`r dt.signalFalsePos[[5]]`|`r signif(100*dt.signalFalsePos[[5]]/length(dt.signalSPeaks[[5]]),4)` %|`r dt.signalFalseNeg[[5]]`|`r signif(100*dt.signalFalseNeg[[5]]/length(dt.signalSPeaks[[5]]),4)` %
 107|`r dt.signalFalsePos[[6]]`|`r signif(100*dt.signalFalsePos[[6]]/length(dt.signalSPeaks[[6]]),4)` %|`r dt.signalFalseNeg[[6]]`|`r signif(100*dt.signalFalseNeg[[6]]/length(dt.signalSPeaks[[6]]),4)` %
 
-
-
-
+  
+  
+Caso|Média do IRR|Dp IRR
+----|------------|------
+102|`r round(mean(dt.signalRRinterval[[1]]/fs),2)`|`r round(sd(dt.signalRRinterval[[1]]/fs),2)`
+103|`r round(mean(dt.signalRRinterval[[2]]/fs),2)`|`r round(sd(dt.signalRRinterval[[2]]/fs),2)`
+104|`r round(mean(dt.signalRRinterval[[3]]/fs),2)`|`r round(sd(dt.signalRRinterval[[3]]/fs),2)`
+105|`r round(mean(dt.signalRRinterval[[4]]/fs),2)`|`r round(sd(dt.signalRRinterval[[4]]/fs),2)`
+106|`r round(mean(dt.signalRRinterval[[5]]/fs),2)`|`r round(sd(dt.signalRRinterval[[5]]/fs),2)`
+107|`r round(mean(dt.signalRRinterval[[6]]/fs),2)`|`r round(sd(dt.signalRRinterval[[6]]/fs),2)`
 
 ***
+[1]: http://www.esei.uvigo.es/fileadmin/docs/estudiantes/Traballos_fin_de_carreira/TFM_SSIA_2012-13/A_comparison_of_three_QRS_detection_algoritms_over_a_public_database.pdf "ÁLVAREZ"
+
+[2]: https://cran.r-project.org/web/packages/signal/signal.pdf "CRAN - package signal"
+
+[3]: http://gen.lib.rus.ec/book/index.php?md5=E3D014CA2546BED013AF02453EC25CC9 "RANGAYYAN"
