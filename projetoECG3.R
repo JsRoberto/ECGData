@@ -138,7 +138,25 @@ freqz.plot <- function(filter.freqz, Fs = fs) {
       grid.arrange(p1 + labs.title, p2, p3 + labs.x, nrow = 3)
 }
 
+dataECG.filter <- function(dataECG.split, num.tf, den.tf) {
+      x <- lapply(dataECG.split, function(x) x$signal_mag - mean(x$signal_mag))
+      x <- sapply(x, filter, filt = num.tf, a = den.tf)
+      x <- as.data.frame(x)
+      x_norm <- sapply(x, function(x) x <- x/max(abs(x)))
+      x_norm <<- as.data.frame(x_norm)
+}
 
+###parei aqui
+dataECG.update <- function(dataECG.split, x_norm) {
+      for (i in 1:length(Ecg.signalSplit)) {
+            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
+      }
+}
+update.filtSignal <- function(Ecg.signalSplit, x_norm) {
+      for (i in 1:length(Ecg.signalSplit)) {
+            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
+      }
+}
 
 
 
