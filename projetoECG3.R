@@ -63,7 +63,7 @@ dataECG.plot <- function(dataECG, interval.seg = 0:60, Fs = fs) {
                              function(x) dataECG.aux <<- 
                                    rbind(dataECG.aux, x[interval.samples,]))
       
-      p1 <- ggplot(Ecg.signalsAUX, aes(x = t, y = signal_mag, group = signal_case)) + 
+      p1 <- ggplot(dataECG.aux, aes(x = t, y = signal_mag, group = signal_case)) + 
             geom_line(color = "blue3") + 
             facet_wrap( ~ signal_case, nrow = 3) + 
             labs(title = "Sinais ECG", x = "tempo (s)", y = "magnitude (Volts)")
@@ -146,17 +146,136 @@ dataECG.filter <- function(dataECG.split, num.tf, den.tf) {
       x_norm <<- as.data.frame(x_norm)
 }
 
-###parei aqui
 dataECG.update <- function(dataECG.split, x_norm) {
-      for (i in 1:length(Ecg.signalSplit)) {
-            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
-      }
+      dataECG.aux <- mapply(function(data, signal_mag) data$signal_mag <<- signal_mag,
+                            dataECG.split, x_norm)
 }
-update.filtSignal <- function(Ecg.signalSplit, x_norm) {
-      for (i in 1:length(Ecg.signalSplit)) {
-            Ecg.signalSplit[[i]]$signal_mag <<- x_norm[[i]]
+
+peak.detection <- function(dataECG.updated, samples, Fs = fs) {
+      peak.values <- data.frame()
+      peak.index <- list()
+      
+      dataECG.max <- lapply(dataECG.updated,
+                            tapply(dataECG.updated$signal_mag[-1], #retirei o primeiro
+                                   gl((dim(dataECG.updated)[1]-1)/samples, samples), max))
+      #Obs.: aparentemente dataECG.idx está funcionando (verificar!!)
+      idx <<- NULL
+      dataECG.idx <- mapply(tapply(dataECG.updated$signal_mag[-1], #retirei o primeiro
+                                   gl((dim(dataECG.updated)[1]-1)/samples, samples),
+                                   function(values, peak = dataECG.max) {
+                                         if (is.null(idx)) idx <<- 0 else idx <<- idx + 1
+                                         ifelse(values==peak[idx], idx, NA)
+                                   }),
+                            dataECG.updated, dataECG.max)
+      #parei aqui!!
+      idx <<- NULL
+      dataECG.idx <- lapply(dataECG.idx, lapply(dataECG.idx, function())) )
+      
+      idx <<- NULL
+      aux <- mapply(mapply(function(index, peak) {
+                                 if (is.null(idx)) idx <<- 0 else idx <<- idx + 1
+                                 
+                           },
+                           dataECG.idx, as.list(dataECG.max)), dataECG.idx, dataECG.max)
+      
+      #################teste!!!!!!!!!!!!
+      idx <<- 0
+      tapply(a, gl(2,5),
+             function(x) {
+                   idx <<- idx + 1
+                   ifelse(x>3, idx, NA)
+             })
+      #################teste!!!!!!!!!!!!
+      k <- 0:(Fs*60/samples)*samples
+      for (i in 1:(Fs*60/samples)) {
+            if (i == Fs*60/samples) {
+                  k[i+1] <- k[i+1] + 1
+            }
+            peak.intervalAUX <- lapply(updated.dataSplit,
+                                       function(x) x$signal_mag[(k[i]+1):k[i+1]])
+            peak.valuesAUX <- lapply(peak.intervalAUX,max)
+            peak.indexAUX <- mapply(function(peak,intmag) ((k[i]+1):k[1+i])[intmag==peak],
+                                    peak.valuesAUX,peak.intervalAUX)
+            #Obs.:representar os NAs é realmente importante??!! Na verdade, é devido
+            #à estrutura de interação adotada quando da obtenção de peak.values mediante o
+            #rbind de um data.frame (isso, por sua vez, gera a mesma necessidade de repre-
+            #sentação de NA em peak.index!
+            maximum <- 0
+            for (l in 1:length(updated.dataSplit)){
+                  if (length(peak.indexAUX[[l]]) > maximum) {
+                        maximum <- length(peak.indexAUX[[l]])
+                  }
+            }
+            if (maximum > 1) {
+                  for (aux in 1:length(updated.dataSplit)) {
+                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],
+                                                       length(peak.indexAUX[[aux]])),
+                                                   rep(NA, maximum - length(peak.indexAUX
+                                                                            [[aux]])))
+                        peak.indexAUX[[aux]] <- c(peak.indexAUX[[aux]],
+                                                  rep(NA,maximum - length(peak.indexAUX
+                                                                          [[aux]])))
+                  }
+            }
+            peak.valuesAUX <- as.data.frame(peak.valuesAUX)
+            peak.values <- rbind(peak.values,peak.valuesAUX)
+            for (j in 1:length(updated.dataSplit)) {
+                  if (length(peak.index) < j) {
+                        peak.index[[j]] <- list()
+                  }
+                  peak.index[[j]][[i]] <- peak.indexAUX[[j]]
+            }
       }
+      peakValues <<- as.data.frame(peak.values,
+                                   row.names = 1:dim(peak.values)[1])
+      peakIndex <<- peak.index
 }
+
+
+peakDetection <- function(updated.dataSplit, samples, Fs = fs) {
+      peak.values <- data.frame()
+      peak.index <- list()
+      k <- 0:(Fs*60/samples)*samples
+      for (i in 1:(Fs*60/samples)) {
+            if (i == Fs*60/samples) {
+                  k[i+1] <- k[i+1] + 1
+            }
+            peak.intervalAUX <- lapply(updated.dataSplit,
+                                       function(x) x$signal_mag[(k[i]+1):k[i+1]])
+            peak.valuesAUX <- lapply(peak.intervalAUX,max)
+            peak.indexAUX <- mapply(function(peak,intmag) ((k[i]+1):k[1+i])[intmag==peak],
+                                    peak.valuesAUX,peak.intervalAUX)
+            maximum <- 0
+            for (l in 1:length(updated.dataSplit)){
+                  if (length(peak.indexAUX[[l]]) > maximum) {
+                        maximum <- length(peak.indexAUX[[l]])
+                  }
+            }
+            if (maximum > 1) {
+                  for (aux in 1:length(updated.dataSplit)) {
+                        peak.valuesAUX[[aux]] <- c(rep(peak.valuesAUX[[aux]],
+                                                       length(peak.indexAUX[[aux]])),
+                                                   rep(NA, maximum - length(peak.indexAUX
+                                                                            [[aux]])))
+                        peak.indexAUX[[aux]] <- c(peak.indexAUX[[aux]],
+                                                  rep(NA,maximum - length(peak.indexAUX
+                                                                          [[aux]])))
+                  }
+            }
+            peak.valuesAUX <- as.data.frame(peak.valuesAUX)
+            peak.values <- rbind(peak.values,peak.valuesAUX)
+            for (j in 1:length(updated.dataSplit)) {
+                  if (length(peak.index) < j) {
+                        peak.index[[j]] <- list()
+                  }
+                  peak.index[[j]][[i]] <- peak.indexAUX[[j]]
+            }
+      }
+      peakValues <<- as.data.frame(peak.values,
+                                   row.names = 1:dim(peak.values)[1])
+      peakIndex <<- peak.index
+}
+
 
 
 
